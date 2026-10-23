@@ -290,6 +290,35 @@ def put_state():
     if not isinstance(data, dict) or set(data) != {'vacas','toros','crias','reprod','partos'} or any(not isinstance(data[k], list) or len(data[k]) > 10000 for k in data):
         raise ValueError('El formato de datos no es válido.')
     row = AppState.query.filter_by(user_id=current_user().id).first()
+    previous = row.payload if row else {'vacas': [], 'reprod': []}
+    previous_ids = {r.get('id') for r in previous.get('reprod', []) if isinstance(r, dict)}
+    old_cows = {v.get('id'): v for v in previous.get('vacas', []) if isinstance(v, dict)}
+    cows = {v.get('id'): v for v in data['vacas'] if isinstance(v, dict)}
+    bulls = {t.get('id'): t for t in data['toros'] if isinstance(t, dict)}
+    known = [r for r in data['reprod'] if isinstance(r, dict) and r.get('id') in previous_ids]
+    for breeding in data['reprod']:
+        if not isinstance(breeding, dict):
+            raise ValueError('El registro reproductivo no es válido.')
+        if breeding.get('id') in previous_ids:
+            continue
+        cow_id, bull_id, breeding_day = breeding.get('vacaId'), breeding.get('toroId'), breeding.get('fecha')
+        cow = cows.get(cow_id)
+        bull = bulls.get(bull_id)
+        try:
+            date.fromisoformat(breeding_day)
+        except (TypeError, ValueError):
+            raise ValueError('La fecha de monta no es válida.')
+        if not cow or not bull or bull.get('estado') != 'Activo':
+            raise ValueError('Selecciona una vaca y un toro activo.')
+        births = [p.get('fecha') for p in data['partos'] if isinstance(p, dict) and p.get('vacaId') == cow_id and isinstance(p.get('fecha'), str)]
+        last_birth = max(births, default='')
+        if breeding_day <= last_birth:
+            raise ValueError('La monta debe ser posterior al último parto de la vaca.')
+        if old_cows.get(cow_id, cow).get('estado') == 'Preñada' or any(
+            r.get('vacaId') == cow_id and isinstance(r.get('fecha'), str) and r['fecha'] > last_birth for r in known
+        ):
+            raise ValueError('Esta vaca ya está preñada o tiene una reproducción pendiente.')
+        known.append(breeding)
     if row is None:
         row = AppState(user_id=current_user().id, payload=data)
         db.session.add(row)

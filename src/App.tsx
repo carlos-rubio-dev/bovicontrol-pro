@@ -99,6 +99,11 @@ function nextId(list: { id: string }[], prefix: string) {
   return `${prefix}-${String(next).padStart(3, '0')}`
 }
 
+function hasPendingReproduction(vacaId: string, reprod: Reproduccion[], partos: Parto[]) {
+  const lastBirth = partos.filter(p => p.vacaId === vacaId).map(p => p.fecha).sort().at(-1) ?? ''
+  return reprod.some(r => r.vacaId === vacaId && (!lastBirth || r.fecha > lastBirth))
+}
+
 const estadoBadge = (estado: string) => {
   const map: Record<string, string> = {
     'Preñada': 'bg-emerald-100 text-emerald-800',
@@ -296,10 +301,12 @@ function CriaForm({ initial, vacas, toros, onSave, onClose }: {
 }
 
 // ─── Reproduccion Form ────────────────────────────────────────────────────────
-function ReproduccionForm({ vacas, toros, onSave, onClose }: {
-  vacas: Vaca[]; toros: Toro[]; onSave: (r: Reproduccion) => void; onClose: () => void
+function ReproduccionForm({ vacas, toros, reprod, partos, onSave, onClose }: {
+  vacas: Vaca[]; toros: Toro[]; reprod: Reproduccion[]; partos: Parto[]; onSave: (r: Reproduccion) => void; onClose: () => void
 }) {
-  const [form, setForm] = useState({ vacaId: vacas[0]?.id ?? '', toroId: toros[0]?.id ?? '', fecha: new Date().toISOString().slice(0,10), tipo: 'Natural' as Reproduccion['tipo'], observaciones: '' })
+  const availableVacas = vacas.filter(v => v.estado !== 'Preñada' && !hasPendingReproduction(v.id, reprod, partos))
+  const [form, setForm] = useState({ vacaId: availableVacas[0]?.id ?? '', toroId: toros.find(t => t.estado === 'Activo')?.id ?? '', fecha: new Date().toISOString().slice(0,10), tipo: 'Natural' as Reproduccion['tipo'], observaciones: '' })
+  const [error, setError] = useState('')
   const up = (k: keyof typeof form, v: string) => setForm(p => ({ ...p, [k]: v }))
   const fechaParto = form.fecha ? addDays(form.fecha, 283) : ''
   const fechaDestete = fechaParto ? addDays(fechaParto, 210) : ''
@@ -307,17 +314,33 @@ function ReproduccionForm({ vacas, toros, onSave, onClose }: {
   return (
     <form onSubmit={e => {
       e.preventDefault()
+      const vaca = vacas.find(v => v.id === form.vacaId)
+      if (!vaca || vaca.estado === 'Preñada' || hasPendingReproduction(form.vacaId, reprod, partos)) {
+        setError('Esta vaca ya está preñada o tiene una reproducción pendiente. Registra el parto o elimina el registro incorrecto antes de otra monta.')
+        return
+      }
+      const lastBirth = partos.filter(p => p.vacaId === form.vacaId).map(p => p.fecha).sort().at(-1) ?? ''
+      if (form.fecha <= lastBirth) {
+        setError('La fecha de monta debe ser posterior al último parto de la vaca.')
+        return
+      }
+      if (!toros.some(t => t.id === form.toroId && t.estado === 'Activo')) {
+        setError('Selecciona un toro activo.')
+        return
+      }
       onSave({ id: '', ...form, fechaParto, fechaDestete, fechaReinicio } as Reproduccion)
     }} className="space-y-4">
+      {availableVacas.length === 0 && <p role="alert" className="text-sm text-amber-800 bg-amber-50 rounded-xl p-3">No hay vacas disponibles para una nueva monta.</p>}
+      {error && <p role="alert" className="text-sm text-red-700 bg-red-50 rounded-xl p-3">{error}</p>}
       <div className="grid grid-cols-2 gap-4">
         <Field label="Vaca *">
           <select required className={sel} value={form.vacaId} onChange={e => up('vacaId', e.target.value)}>
-            {vacas.map(v => <option key={v.id} value={v.id}>{v.nombre} ({v.id})</option>)}
+            {availableVacas.map(v => <option key={v.id} value={v.id}>{v.nombre} ({v.id})</option>)}
           </select>
         </Field>
         <Field label="Toro *">
           <select required className={sel} value={form.toroId} onChange={e => up('toroId', e.target.value)}>
-            {toros.map(t => <option key={t.id} value={t.id}>{t.nombre} ({t.id})</option>)}
+            {toros.filter(t => t.estado === 'Activo').map(t => <option key={t.id} value={t.id}>{t.nombre} ({t.id})</option>)}
           </select>
         </Field>
         <Field label="Fecha de monta *"><input required type="date" className={inp} value={form.fecha} onChange={e => up('fecha', e.target.value)} /></Field>
@@ -338,7 +361,7 @@ function ReproduccionForm({ vacas, toros, onSave, onClose }: {
         </div>
       )}
       <div className="flex gap-3 pt-2">
-        <button type="submit" className="flex-1 py-2.5 bg-[#2d5a27] text-white rounded-xl text-sm font-medium hover:bg-[#3a7232] transition-colors">Guardar registro</button>
+        <button type="submit" disabled={availableVacas.length === 0 || !toros.some(t => t.estado === 'Activo')} className="flex-1 py-2.5 bg-[#2d5a27] disabled:opacity-50 text-white rounded-xl text-sm font-medium hover:bg-[#3a7232] transition-colors">Guardar registro</button>
         <button type="button" onClick={onClose} className="px-5 py-2.5 border border-[#d4ddd0] rounded-xl text-sm text-[#6b7c5e] hover:bg-[#f4f6f3]">Cancelar</button>
       </div>
     </form>
@@ -1054,8 +1077,8 @@ function CriasScreen({ crias, vacas, toros, onAdd, onEdit, onDelete }: {
 }
 
 // ─── Reproduccion Screen ──────────────────────────────────────────────────────
-function ReproduccionScreen({ reprod, vacas, toros, onAdd, onDelete }: {
-  reprod: Reproduccion[]; vacas: Vaca[]; toros: Toro[]; onAdd: (r: Reproduccion) => void; onDelete: (id: string) => void
+function ReproduccionScreen({ reprod, partos, vacas, toros, onAdd, onDelete }: {
+  reprod: Reproduccion[]; partos: Parto[]; vacas: Vaca[]; toros: Toro[]; onAdd: (r: Reproduccion) => void; onDelete: (id: string) => void
 }) {
   const [modal, setModal] = useState(false)
   const [confirm, setConfirm] = useState<string | null>(null)
@@ -1066,7 +1089,7 @@ function ReproduccionScreen({ reprod, vacas, toros, onAdd, onDelete }: {
     <div className="p-6 h-full overflow-y-auto">
       {modal && (
         <Modal title="Nuevo registro de reproducción" onClose={() => setModal(false)}>
-          <ReproduccionForm vacas={vacas} toros={toros} onSave={r => { onAdd(r); setModal(false) }} onClose={() => setModal(false)} />
+          <ReproduccionForm vacas={vacas} toros={toros} reprod={reprod} partos={partos} onSave={r => { onAdd(r); setModal(false) }} onClose={() => setModal(false)} />
         </Modal>
       )}
       {confirm && <ConfirmDialog msg="¿Eliminar este registro?" onConfirm={() => { onDelete(confirm); setConfirm(null) }} onCancel={() => setConfirm(null)} />}
@@ -1492,7 +1515,10 @@ export default function App() {
     queue.current = queue.current.catch(() => {}).then(async () => {
       const response = await fetch('/api/state', {method:'PUT',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf.current},body:payload})
       if (response.status === 401) { setAuthenticated(false); setScreen('login'); throw new Error('La sesión terminó') }
-      if (!response.ok) throw new Error('No se pudieron guardar los cambios')
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}))
+        throw new Error(result.error || 'No se pudieron guardar los cambios')
+      }
       setSaveError('')
     }).catch(e => setSaveError(e.message))
   }, [ready,authenticated,vacas,toros,crias,reprod,partos])
@@ -1510,10 +1536,26 @@ export default function App() {
   const editCria = (c: Cria) => setCrias(p => p.map(x => x.id === c.id ? c : x))
   const delCria = (id: string) => setCrias(p => p.filter(x => x.id !== id))
 
-  const addReprod = (r: Reproduccion) => setReprod(p => [...p, { ...r, id: nextId(p, 'R') }])
-  const delReprod = (id: string) => setReprod(p => p.filter(x => x.id !== id))
+  const addReprod = (r: Reproduccion) => {
+    setReprod(p => [...p, { ...r, id: nextId(p, 'R') }])
+    setVacas(p => p.map(v => v.id === r.vacaId ? { ...v, estado: 'Preñada', proximoParto: r.fechaParto } : v))
+  }
+  const delReprod = (id: string) => {
+    const removed = reprod.find(r => r.id === id)
+    const remaining = reprod.filter(r => r.id !== id)
+    setReprod(remaining)
+    if (removed && !hasPendingReproduction(removed.vacaId, remaining, partos)) {
+      setVacas(p => p.map(v => v.id === removed.vacaId && v.proximoParto === removed.fechaParto
+        ? { ...v, estado: 'Vacía', proximoParto: '' } : v))
+    }
+  }
 
-  const addParto = (p: Parto) => setPartos(prev => [...prev, { ...p, id: nextId(prev, 'P') }])
+  const addParto = (p: Parto) => {
+    setPartos(prev => [...prev, { ...p, id: nextId(prev, 'P') }])
+    setVacas(prev => prev.map(v => v.id === p.vacaId ? {
+      ...v, estado: 'Lactando', ultimoParto: p.fecha, proximoParto: '', partos: v.partos + 1,
+    } : v))
+  }
   const delParto = (id: string) => setPartos(p => p.filter(x => x.id !== id))
 
   const handleSync = () => {
@@ -1546,7 +1588,7 @@ export default function App() {
       case 'vacaProfile': return selectedVaca ? <VacaProfile vaca={vacas.find(v => v.id === selectedVaca.id) ?? selectedVaca} reprod={reprod} partos={partos} crias={crias} toros={toros} onBack={() => setScreen('vacas')} onEdit={editVaca} /> : null
       case 'toros': return <TorosScreen toros={toros} crias={crias} onAdd={addToro} onEdit={editToro} onDelete={delToro} />
       case 'crias': return <CriasScreen crias={crias} vacas={vacas} toros={toros} onAdd={addCria} onEdit={editCria} onDelete={delCria} />
-      case 'reproduccion': return <ReproduccionScreen reprod={reprod} vacas={vacas} toros={toros} onAdd={addReprod} onDelete={delReprod} />
+      case 'reproduccion': return <ReproduccionScreen reprod={reprod} partos={partos} vacas={vacas} toros={toros} onAdd={addReprod} onDelete={delReprod} />
       case 'partos': return <PartosScreen partos={partos} vacas={vacas} crias={crias} onAdd={addParto} onDelete={delParto} />
       case 'destetes': return <DesteteScreen crias={crias} vacas={vacas} toros={toros} onEdit={editCria} />
       case 'calendario': return <CalendarioScreen vacas={vacas} reprod={reprod} crias={crias} />
