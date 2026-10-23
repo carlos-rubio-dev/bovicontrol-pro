@@ -40,6 +40,8 @@ with tempfile.TemporaryDirectory() as temporary_db_dir:
             second['fecha'] = '2026-10-22'
             state['reprod'] = [first, second]
             state['vacas'] = [{**state['vacas'][0], 'estado': 'Preñada', 'proximoParto': second['fechaParto']}]
+            self.assertEqual(client.put('/api/state', json=state, headers=headers).status_code, 400)
+            second['fecha'] = '2026-12-10'
             self.assertEqual(client.put('/api/state', json=state, headers=headers).status_code, 200)
 
     unittest.main(exit=False)

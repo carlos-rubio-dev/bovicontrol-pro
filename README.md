@@ -23,7 +23,9 @@ Abre <http://127.0.0.1:5000>. En la primera visita, crea la cuenta administrador
 2. Copia `.env.example` a `.env` y configura `DATABASE_URL` con tu usuario y contraseña.
 3. Inicia Flask. Las tablas se crean al arrancar.
 
-Las fechas estimadas usan 283 días de gestación, 210 para destete y 60 tras el parto para nueva monta. Son valores orientativos y deben ajustarse con criterio veterinario. Esta versión está pensada para uso local. Cada cuenta tiene sus propios registros de ganado, reproducción y calendario. El administrador gestiona las cuentas, pero ve únicamente sus propios registros; los datos guardados antes de esta separación se asignan a la cuenta administradora.
+Las fechas estimadas usan 283 días de gestación y 210 para destete. Al registrar un parto real, el sistema calcula cuándo empezar a vigilar celo (día 50) y desde cuándo considerar otra monta (día 60); muestra una cuenta regresiva en el perfil y los eventos en el calendario. El ciclo de celo de ~21 días es solo una referencia después de observar un celo real. Registrar una monta marca la vaca como preñada de forma provisional; la gestación y la aptitud para una nueva monta deben confirmarse con un veterinario. Cada cuenta tiene sus propios registros de ganado, reproducción y calendario. El administrador gestiona las cuentas, pero ve únicamente sus propios registros; los datos guardados antes de esta separación se asignan a la cuenta administradora.
+
+Referencias para estos intervalos orientativos: [Oklahoma State University, detección de celo e inseminación](https://extension.okstate.edu/fact-sheets/artificial-insemination-for-beef-cattle) y [preparación posparto para una nueva monta](https://extension.okstate.edu/programs/beef-extension/cow-calf-corner-the-newsletter-archives/2025/july-14-2025).
 
 ## Despliegue en Render y TiDB Cloud
 

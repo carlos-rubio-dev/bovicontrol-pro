@@ -104,6 +104,28 @@ function hasPendingReproduction(vacaId: string, reprod: Reproduccion[], partos: 
   return reprod.some(r => r.vacaId === vacaId && (!lastBirth || r.fecha > lastBirth))
 }
 
+const DAYS_TO_WATCH_ESTRUS = 50
+const DAYS_TO_REBREED = 60
+const AVERAGE_ESTRUS_CYCLE = 21
+const todayIso = () => {
+  const today = new Date()
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+}
+function daysFromToday(dateStr: string) {
+  return Math.round((new Date(dateStr + 'T12:00:00').getTime() - new Date(todayIso() + 'T12:00:00').getTime()) / 86400000)
+}
+function timeUntil(dateStr: string) {
+  const days = daysFromToday(dateStr)
+  return days > 0 ? `Faltan ${days} días` : days === 0 ? 'Desde hoy' : 'Fecha alcanzada; confirma el estado actual'
+}
+function lastBirthDate(vaca: Vaca, partos: Parto[]) {
+  return [vaca.ultimoParto, ...partos.filter(p => p.vacaId === vaca.id).map(p => p.fecha)].filter(Boolean).sort().at(-1) ?? ''
+}
+function postpartumPlan(vaca: Vaca, partos: Parto[]) {
+  const birth = lastBirthDate(vaca, partos)
+  return birth ? { birth, watchEstrus: addDays(birth, DAYS_TO_WATCH_ESTRUS), readyToBreed: addDays(birth, DAYS_TO_REBREED) } : null
+}
+
 const estadoBadge = (estado: string) => {
   const map: Record<string, string> = {
     'Preñada': 'bg-emerald-100 text-emerald-800',
@@ -122,7 +144,7 @@ const estadoBadge = (estado: string) => {
 }
 
 const calEventColor = (tipo: string) => {
-  const map: Record<string, string> = { monta: 'bg-blue-500', parto: 'bg-emerald-600', destete: 'bg-orange-500', alerta: 'bg-red-500', vacuna: 'bg-purple-500' }
+  const map: Record<string, string> = { monta: 'bg-blue-500', parto: 'bg-emerald-600', destete: 'bg-orange-500', celo: 'bg-rose-500', apta: 'bg-violet-500', alerta: 'bg-red-500', vacuna: 'bg-purple-500' }
   return map[tipo] || 'bg-gray-400'
 }
 
@@ -308,9 +330,12 @@ function ReproduccionForm({ vacas, toros, reprod, partos, onSave, onClose }: {
   const [form, setForm] = useState({ vacaId: availableVacas[0]?.id ?? '', toroId: toros.find(t => t.estado === 'Activo')?.id ?? '', fecha: new Date().toISOString().slice(0,10), tipo: 'Natural' as Reproduccion['tipo'], observaciones: '' })
   const [error, setError] = useState('')
   const up = (k: keyof typeof form, v: string) => setForm(p => ({ ...p, [k]: v }))
+  const selectedVaca = vacas.find(v => v.id === form.vacaId)
+  const selectedPlan = selectedVaca ? postpartumPlan(selectedVaca, partos) : null
   const fechaParto = form.fecha ? addDays(form.fecha, 283) : ''
   const fechaDestete = fechaParto ? addDays(fechaParto, 210) : ''
-  const fechaReinicio = fechaParto ? addDays(fechaParto, 60) : ''
+  const fechaCelo = fechaParto ? addDays(fechaParto, DAYS_TO_WATCH_ESTRUS) : ''
+  const fechaReinicio = fechaParto ? addDays(fechaParto, DAYS_TO_REBREED) : ''
   return (
     <form onSubmit={e => {
       e.preventDefault()
@@ -322,6 +347,10 @@ function ReproduccionForm({ vacas, toros, reprod, partos, onSave, onClose }: {
       const lastBirth = partos.filter(p => p.vacaId === form.vacaId).map(p => p.fecha).sort().at(-1) ?? ''
       if (form.fecha <= lastBirth) {
         setError('La fecha de monta debe ser posterior al último parto de la vaca.')
+        return
+      }
+      if (selectedPlan && form.fecha < selectedPlan.readyToBreed) {
+        setError(`La vaca estará disponible para una nueva monta desde el ${fmtDate(selectedPlan.readyToBreed)}.`)
         return
       }
       if (!toros.some(t => t.id === form.toroId && t.estado === 'Activo')) {
@@ -352,12 +381,15 @@ function ReproduccionForm({ vacas, toros, reprod, partos, onSave, onClose }: {
           </select>
         </Field>
       </div>
+      {selectedPlan && <p className="text-xs text-[#6b7c5e]">Tras su último parto, vigilar celo desde el {fmtDate(selectedPlan.watchEstrus)} y considerar nueva monta desde el {fmtDate(selectedPlan.readyToBreed)}.</p>}
+      <p className="text-xs text-[#6b7c5e]">Al guardar la monta, la vaca figurará como preñada de forma provisional. Confirma la gestación con una revisión veterinaria.</p>
       <Field label="Observaciones"><textarea rows={2} className={inp + ' resize-none'} value={form.observaciones} onChange={e => up('observaciones', e.target.value)} /></Field>
       {form.fecha && (
-        <div className="grid grid-cols-3 gap-3 p-4 bg-[#f4f6f3] rounded-xl border border-[#d4ddd0]">
+        <div className="grid grid-cols-4 gap-3 p-4 bg-[#f4f6f3] rounded-xl border border-[#d4ddd0]">
           <div><div className="text-[10px] font-semibold text-[#6b7c5e] mb-0.5">Parto estimado</div><div className="text-sm font-bold text-[#2d5a27]">{fmtDate(fechaParto)}</div></div>
           <div><div className="text-[10px] font-semibold text-[#6b7c5e] mb-0.5">Destete estimado</div><div className="text-sm font-bold text-[#1a2318]">{fmtDate(fechaDestete)}</div></div>
-          <div><div className="text-[10px] font-semibold text-[#6b7c5e] mb-0.5">Nueva reproducción</div><div className="text-sm font-bold text-[#1a2318]">{fmtDate(fechaReinicio)}</div></div>
+          <div><div className="text-[10px] font-semibold text-[#6b7c5e] mb-0.5">Vigilar celo desde</div><div className="text-sm font-bold text-[#1a2318]">{fmtDate(fechaCelo)}</div></div>
+          <div><div className="text-[10px] font-semibold text-[#6b7c5e] mb-0.5">Nueva monta desde</div><div className="text-sm font-bold text-[#1a2318]">{fmtDate(fechaReinicio)}</div></div>
         </div>
       )}
       <div className="flex gap-3 pt-2">
@@ -592,6 +624,12 @@ function Dashboard({ vacas, toros, crias, reprod, partos, onNav }: {
 }) {
   const pregnant = vacas.filter(v => v.estado === 'Preñada').length
   const enCelo = vacas.filter(v => v.estado === 'En celo').length
+  const readyForBreeding = vacas.filter(v => v.estado !== 'Preñada' && !hasPendingReproduction(v.id, reprod, partos) && (!postpartumPlan(v, partos) || postpartumPlan(v, partos)!.readyToBreed <= todayIso())).length
+  const upcomingRecovery = vacas.flatMap(v => {
+    const plan = postpartumPlan(v, partos)
+    return plan && v.estado !== 'Preñada' && !hasPendingReproduction(v.id, reprod, partos) && daysFromToday(plan.readyToBreed) >= 0
+      ? [{ vaca: v, date: plan.readyToBreed }] : []
+  }).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3)
   const today = new Date()
   const year = today.getFullYear(), month = today.getMonth()
   const daysInMonth = new Date(year, month + 1, 0).getDate(); const firstDay = new Date(year, month, 1).getDay()
@@ -599,18 +637,18 @@ function Dashboard({ vacas, toros, crias, reprod, partos, onNav }: {
   const monthlyBirths = Array.from({length:12},(_,i)=>({mes:new Date(year,i,1).toLocaleDateString('es-CO',{month:'short'}),nacimientos:crias.filter(c=>c.fechaNacimiento.startsWith(`${year}-${String(i+1).padStart(2,'0')}`)).length}))
 
   const calEvents: Record<string, { tipo: string; texto: string }[]> = {}
-  reprod.forEach(r => {
-    if (r.fechaParto) {
-      const k = r.fechaParto
-      if (!calEvents[k]) calEvents[k] = []
-      const vaca = vacas.find(v => v.id === r.vacaId)
-      calEvents[k].push({ tipo: 'parto', texto: `Parto: ${vaca?.nombre ?? r.vacaId}` })
-    }
-  })
-  vacas.filter(v => v.proximoParto).forEach(v => {
+  vacas.filter(v => v.estado === 'Preñada' && v.proximoParto).forEach(v => {
     const k = v.proximoParto
     if (!calEvents[k]) calEvents[k] = []
     calEvents[k].push({ tipo: 'parto', texto: `Parto: ${v.nombre}` })
+  })
+  vacas.forEach(v => {
+    const plan = postpartumPlan(v, partos)
+    if (!plan || v.estado === 'Preñada' || hasPendingReproduction(v.id, reprod, partos)) return
+    for (const [date, tipo, texto] of [[plan.watchEstrus, 'celo', `Vigilar celo: ${v.nombre}`], [plan.readyToBreed, 'apta', `Nueva monta: ${v.nombre}`]]) {
+      if (!calEvents[date]) calEvents[date] = []
+      calEvents[date].push({ tipo, texto })
+    }
   })
 
   const estadoData = [
@@ -640,7 +678,7 @@ function Dashboard({ vacas, toros, crias, reprod, partos, onNav }: {
       </div>
       <div className="grid grid-cols-4 gap-4">
         <button onClick={() => onNav('vacas')} className="text-left">
-          <StatCard label="Listas para preñar" value={enCelo} sub="En celo actualmente" color="bg-violet-500" Icon={Heart} />
+          <StatCard label="Aptas para evaluar monta" value={readyForBreeding} sub="Confirma celo y condición" color="bg-violet-500" Icon={Heart} />
         </button>
         <button onClick={() => onNav('toros')} className="text-left">
           <StatCard label="Toros registrados" value={toros.length} sub={`${toros.filter(t => t.estado === 'Activo').length} activos`} color="bg-[#6b7c5e]" Icon={Beef} />
@@ -652,6 +690,11 @@ function Dashboard({ vacas, toros, crias, reprod, partos, onNav }: {
           <StatCard label="Próximos destetes" value={crias.filter(c => { const d = new Date(c.fechaDestete); const diff = (d.getTime() - today.getTime()) / 86400000; return diff >= 0 && diff <= 30 }).length} sub="En los próximos 30 días" color="bg-rose-500" Icon={TrendingUp} />
         </button>
       </div>
+
+      {upcomingRecovery.length > 0 && <div className="bg-white rounded-xl border border-[#d4ddd0] shadow-sm p-5">
+        <h3 className="font-semibold text-[#1a2318] text-sm mb-3">Próximas vacas para nueva monta</h3>
+        <div className="grid grid-cols-3 gap-3">{upcomingRecovery.map(({ vaca, date }) => <div key={vaca.id} className="bg-violet-50 rounded-xl p-3"><div className="text-sm font-semibold text-[#1a2318]">{vaca.nombre}</div><div className="text-xs text-[#6b7c5e]">Desde el {fmtDate(date)}</div><div className="text-xs font-medium text-violet-700">{timeUntil(date)}</div></div>)}</div>
+      </div>}
 
       <div className="grid grid-cols-3 gap-5">
         {/* Calendar */}
@@ -686,7 +729,7 @@ function Dashboard({ vacas, toros, crias, reprod, partos, onNav }: {
         <div className="bg-white rounded-xl border border-[#d4ddd0] shadow-sm p-5">
           <h3 className="font-semibold text-[#1a2318] text-sm mb-4">Próximos partos</h3>
           <div className="space-y-3">
-            {vacas.filter(v => v.proximoParto).sort((a, b) => a.proximoParto.localeCompare(b.proximoParto)).slice(0, 5).map(v => (
+            {vacas.filter(v => v.estado === 'Preñada' && v.proximoParto && v.proximoParto >= todayIso()).sort((a, b) => a.proximoParto.localeCompare(b.proximoParto)).slice(0, 5).map(v => (
               <div key={v.id} className="flex items-center gap-3 p-2.5 bg-[#f4f6f3] rounded-xl">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
                 <div className="flex-1">
@@ -831,6 +874,8 @@ function VacaProfile({ vaca, reprod, partos, crias, toros, onBack, onEdit }: {
   const vacaReprod = reprod.filter(r => r.vacaId === vaca.id)
   const vacaPartos = partos.filter(p => p.vacaId === vaca.id)
   const vacaCrias = crias.filter(c => c.madre === vaca.id)
+  const plan = postpartumPlan(vaca, partos)
+  const gestationPending = vaca.estado === 'Preñada' || hasPendingReproduction(vaca.id, reprod, partos)
 
   const timeline = [
     ...vacaReprod.map(r => ({ fecha: r.fecha, tipo: r.tipo === 'Natural' ? 'monta' : 'inseminacion', desc: `${r.tipo} con ${toros.find(t => t.id === r.toroId)?.nombre ?? r.toroId}` })),
@@ -902,10 +947,21 @@ function VacaProfile({ vaca, reprod, partos, crias, toros, onBack, onEdit }: {
         </div>
 
         <div className="space-y-4">
-          {vaca.proximoParto && (
+          {vaca.estado === 'Preñada' && vaca.proximoParto && (
             <div className="bg-[#2d5a27] rounded-xl p-5 text-white">
               <div className="text-xs text-white/70 font-medium mb-1">Próximo parto estimado</div>
               <div className="text-lg font-bold">{fmtDate(vaca.proximoParto)}</div>
+              <div className="text-xs text-white/70 mt-1">{timeUntil(vaca.proximoParto)}</div>
+            </div>
+          )}
+          {plan && !gestationPending && (
+            <div className="bg-white rounded-xl border border-[#d4ddd0] shadow-sm p-5">
+              <h4 className="text-sm font-semibold text-[#1a2318] mb-3">Recuperación tras el parto</h4>
+              <div className="space-y-3">
+                <div><div className="text-xs text-[#6b7c5e]">Vigilar celo desde</div><div className="text-sm font-semibold text-[#1a2318]">{fmtDate(plan.watchEstrus)}</div><div className="text-xs text-rose-700">{timeUntil(plan.watchEstrus)}</div></div>
+                <div><div className="text-xs text-[#6b7c5e]">Puede intentarse otra monta desde</div><div className="text-sm font-semibold text-[#1a2318]">{fmtDate(plan.readyToBreed)}</div><div className="text-xs text-violet-700">{timeUntil(plan.readyToBreed)}</div></div>
+              </div>
+              <p className="text-[11px] text-[#6b7c5e] mt-3">Fechas orientativas. Un celo observado suele repetirse cada ~{AVERAGE_ESTRUS_CYCLE} días; confirma la aptitud reproductiva con un veterinario.</p>
             </div>
           )}
           <div className="bg-white rounded-xl border border-[#d4ddd0] shadow-sm p-5">
@@ -1145,6 +1201,10 @@ function PartosScreen({ partos, vacas, crias, onAdd, onDelete }: {
   const [confirm, setConfirm] = useState<string | null>(null)
   const vacaName = (id: string) => { const v = vacas.find(x => x.id === id); return v ? `${v.nombre} (${v.id})` : id }
   const criaName = (id: string) => { const c = crias.find(x => x.id === id); return c ? `${c.nombre} (${c.id})` : id || '—' }
+  const recovering = vacas.flatMap(v => {
+    const plan = postpartumPlan(v, partos)
+    return plan && v.estado !== 'Preñada' && daysFromToday(plan.readyToBreed) >= -30 ? [{ vaca: v, plan }] : []
+  }).sort((a, b) => a.plan.readyToBreed.localeCompare(b.plan.readyToBreed)).slice(0, 6)
 
   return (
     <div className="p-6 h-full overflow-y-auto">
@@ -1192,6 +1252,15 @@ function PartosScreen({ partos, vacas, crias, onAdd, onDelete }: {
           <span className="text-xs text-[#6b7c5e]">{partos.length} partos registrados</span>
         </div>
       </div>
+      {recovering.length > 0 && <div className="bg-white rounded-xl border border-[#d4ddd0] shadow-sm p-5 mt-5">
+        <h3 className="font-semibold text-[#1a2318] text-sm mb-3">Seguimiento después del parto</h3>
+        <div className="grid grid-cols-3 gap-3">{recovering.map(({ vaca, plan }) => <div key={vaca.id} className="rounded-xl bg-[#f4f6f3] p-3">
+          <div className="font-semibold text-sm text-[#1a2318]">{vaca.nombre}</div>
+          <div className="text-xs text-[#6b7c5e] mt-1">Vigilar celo: {fmtDate(plan.watchEstrus)}</div>
+          <div className="text-xs text-[#6b7c5e]">Nueva monta: {fmtDate(plan.readyToBreed)}</div>
+          <div className="text-xs font-medium text-violet-700 mt-1">{timeUntil(plan.readyToBreed)}</div>
+        </div>)}</div>
+      </div>}
     </div>
   )
 }
@@ -1255,7 +1324,7 @@ function DesteteScreen({ crias, vacas, toros, onEdit }: { crias: Cria[]; vacas: 
 }
 
 // ─── Calendario Screen ────────────────────────────────────────────────────────
-function CalendarioScreen({ vacas, reprod, crias }: { vacas: Vaca[]; reprod: Reproduccion[]; crias: Cria[] }) {
+function CalendarioScreen({ vacas, reprod, partos, crias }: { vacas: Vaca[]; reprod: Reproduccion[]; partos: Parto[]; crias: Cria[] }) {
   const [selected, setSelected] = useState<string | null>(null)
   const [offset, setOffset] = useState(0)
   const today = new Date()
@@ -1270,9 +1339,15 @@ function CalendarioScreen({ vacas, reprod, crias }: { vacas: Vaca[]; reprod: Rep
     if (!calEvents[k]) calEvents[k] = []
     calEvents[k].push({ tipo, texto })
   }
-  vacas.filter(v => v.proximoParto).forEach(v => addEvent(v.proximoParto, 'parto', `Parto: ${v.nombre}`))
+  vacas.filter(v => v.estado === 'Preñada' && v.proximoParto).forEach(v => addEvent(v.proximoParto, 'parto', `Parto: ${v.nombre}`))
   reprod.forEach(r => { addEvent(r.fecha, 'monta', `Monta: ${vacas.find(v => v.id === r.vacaId)?.nombre ?? r.vacaId}`) })
   crias.forEach(c => { if (c.fechaDestete) addEvent(c.fechaDestete, 'destete', `Destete: ${c.nombre}`) })
+  const postpartumEvents = vacas.flatMap(v => {
+    const plan = postpartumPlan(v, partos)
+    return plan && v.estado !== 'Preñada' && !hasPendingReproduction(v.id, reprod, partos)
+      ? [{ fecha: plan.watchEstrus, desc: `Vigilar celo: ${v.nombre}`, tipo: 'celo' }, { fecha: plan.readyToBreed, desc: `Nueva monta: ${v.nombre}`, tipo: 'apta' }] : []
+  })
+  postpartumEvents.forEach(e => addEvent(e.fecha, e.tipo, e.desc))
 
   return (
     <div className="p-6 h-full overflow-y-auto">
@@ -1286,7 +1361,7 @@ function CalendarioScreen({ vacas, reprod, crias }: { vacas: Vaca[]; reprod: Rep
             </div>
           </div>
           <div className="flex flex-wrap gap-3 mb-4">
-            {[['bg-blue-500','Montas'],['bg-emerald-600','Partos'],['bg-orange-500','Destetes'],['bg-red-500','Alertas']].map(([c,l]) => (
+            {[['bg-blue-500','Montas'],['bg-emerald-600','Partos'],['bg-orange-500','Destetes'],['bg-rose-500','Vigilar celo'],['bg-violet-500','Nueva monta']].map(([c,l]) => (
               <span key={l} className="flex items-center gap-1.5 text-xs text-[#6b7c5e]"><span className={`w-2.5 h-2.5 rounded-full ${c}`} />{l}</span>
             ))}
           </div>
@@ -1331,10 +1406,11 @@ function CalendarioScreen({ vacas, reprod, crias }: { vacas: Vaca[]; reprod: Rep
           <div className="bg-white rounded-xl border border-[#d4ddd0] shadow-sm p-5">
             <h3 className="font-semibold text-[#1a2318] text-sm mb-4">Próximos eventos</h3>
             <div className="space-y-3">
-              {[...vacas.filter(v => v.proximoParto).map(v => ({ fecha: v.proximoParto, desc: `Parto: ${v.nombre}`, tipo: 'parto' })),
+              {[...vacas.filter(v => v.estado === 'Preñada' && v.proximoParto).map(v => ({ fecha: v.proximoParto, desc: `Parto: ${v.nombre}`, tipo: 'parto' })),
                 ...reprod.map(r => ({ fecha: r.fecha, desc: `Monta: ${vacas.find(v => v.id === r.vacaId)?.nombre ?? r.vacaId}`, tipo: 'monta' })),
-                ...crias.filter(c => c.fechaDestete).map(c => ({ fecha: c.fechaDestete, desc: `Destete: ${c.nombre}`, tipo: 'destete' }))
-              ].sort((a, b) => a.fecha.localeCompare(b.fecha)).slice(0, 7).map(({ fecha, desc, tipo }) => (
+                ...crias.filter(c => c.fechaDestete).map(c => ({ fecha: c.fechaDestete, desc: `Destete: ${c.nombre}`, tipo: 'destete' })),
+                ...postpartumEvents
+              ].filter(e => e.fecha >= todayIso()).sort((a, b) => a.fecha.localeCompare(b.fecha)).slice(0, 7).map(({ fecha, desc, tipo }) => (
                 <div key={fecha + desc} className="flex items-center gap-3">
                   <div className={`w-2 h-2 rounded-full flex-shrink-0 ${calEventColor(tipo)}`} />
                   <div className="flex-1 text-xs text-[#1a2318] font-medium truncate">{desc}</div>
@@ -1555,8 +1631,22 @@ export default function App() {
     setVacas(prev => prev.map(v => v.id === p.vacaId ? {
       ...v, estado: 'Lactando', ultimoParto: p.fecha, proximoParto: '', partos: v.partos + 1,
     } : v))
+    if (p.criaId) setCrias(prev => prev.map(c => c.id === p.criaId ? {
+      ...c, madre: p.vacaId, fechaNacimiento: p.fecha, fechaDestete: addDays(p.fecha, 210),
+    } : c))
   }
-  const delParto = (id: string) => setPartos(p => p.filter(x => x.id !== id))
+  const delParto = (id: string) => {
+    const removed = partos.find(p => p.id === id)
+    const remaining = partos.filter(p => p.id !== id)
+    setPartos(remaining)
+    if (removed) setVacas(prev => prev.map(v => {
+      if (v.id !== removed.vacaId) return v
+      const lastBirth = remaining.filter(p => p.vacaId === v.id).map(p => p.fecha).sort().at(-1) ?? ''
+      const pending = reprod.filter(r => r.vacaId === v.id && r.fecha > lastBirth).sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
+      return { ...v, partos: Math.max(0, v.partos - 1), ultimoParto: v.ultimoParto === removed.fecha ? lastBirth : v.ultimoParto,
+        estado: pending ? 'Preñada' : 'Vacía', proximoParto: pending?.fechaParto ?? '' }
+    }))
+  }
 
   const handleSync = () => {
     setSyncStatus('syncing')
@@ -1591,7 +1681,7 @@ export default function App() {
       case 'reproduccion': return <ReproduccionScreen reprod={reprod} partos={partos} vacas={vacas} toros={toros} onAdd={addReprod} onDelete={delReprod} />
       case 'partos': return <PartosScreen partos={partos} vacas={vacas} crias={crias} onAdd={addParto} onDelete={delParto} />
       case 'destetes': return <DesteteScreen crias={crias} vacas={vacas} toros={toros} onEdit={editCria} />
-      case 'calendario': return <CalendarioScreen vacas={vacas} reprod={reprod} crias={crias} />
+      case 'calendario': return <CalendarioScreen vacas={vacas} reprod={reprod} partos={partos} crias={crias} />
       case 'notificaciones': return <NotificacionesScreen vacas={vacas} crias={crias} />
       case 'usuarios': return account?.is_admin ? <UsuariosScreen csrf={csrf.current} me={account} /> : null
       default: return null

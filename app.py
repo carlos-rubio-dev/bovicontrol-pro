@@ -311,9 +311,13 @@ def put_state():
         if not cow or not bull or bull.get('estado') != 'Activo':
             raise ValueError('Selecciona una vaca y un toro activo.')
         births = [p.get('fecha') for p in data['partos'] if isinstance(p, dict) and p.get('vacaId') == cow_id and isinstance(p.get('fecha'), str)]
+        if isinstance(cow.get('ultimoParto'), str):
+            births.append(cow['ultimoParto'])
         last_birth = max(births, default='')
         if breeding_day <= last_birth:
             raise ValueError('La monta debe ser posterior al último parto de la vaca.')
+        if last_birth and date.fromisoformat(breeding_day) < date.fromisoformat(last_birth) + timedelta(days=60):
+            raise ValueError('Espera al menos 60 días después del parto antes de registrar otra monta.')
         if old_cows.get(cow_id, cow).get('estado') == 'Preñada' or any(
             r.get('vacaId') == cow_id and isinstance(r.get('fecha'), str) and r['fecha'] > last_birth for r in known
         ):
