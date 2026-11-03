@@ -1,0 +1,37 @@
+# BoviControl Pro: memoria del proyecto
+
+## Alcance y arquitectura
+Aplicación de gestión bovina. Este repositorio contiene ambos componentes: backend en `app.py` (Python, Flask, Flask-SQLAlchemy) y frontend en `src/` (React 18, TypeScript, Vite y Tailwind). SQLite es el almacenamiento local; MySQL/TiDB se configura con `DATABASE_URL`.
+
+La interfaz usa `/api/session`, `/api/login`, `/api/logout`, `/api/setup`, `/api/users` y `/api/state`. El estado ganadero se guarda como JSON en `AppState`, asociado al usuario autenticado. Las rutas antiguas de animales/reproducción están deshabilitadas en `csrf()`; no las reactives al implementar una función de la interfaz.
+
+El backend es responsable de autenticación, autorización, CSRF, validación y persistencia. El frontend depende del contrato HTTP, nunca de SQL ni de secretos. No introduzcas una separación física de repositorios ni una migración de arquitectura para cambios pequeños.
+
+## PowerShell: instalación, ejecución y comprobación
+Desde la raíz:
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+npm.cmd ci
+npm.cmd run build
+.\.venv\Scripts\python.exe app.py
+```
+La aplicación está en `http://127.0.0.1:5000`. Para desarrollar la interfaz, ejecuta `npm.cmd run dev` en otra terminal; Vite redirige `/api` al servidor Flask. `npm.cmd run build` genera `static/dist`, que Flask sirve y que este repositorio versiona; incluye el resultado si cambia la interfaz.
+
+Prueba de regresión existente:
+```powershell
+.\.venv\Scripts\python.exe tests/test_reproduction.py
+```
+Ejecuta cada archivo de pruebas como script separado: el actual importa la aplicación y ejecuta unittest al cargarse. Los nuevos tests deben usar SQLite temporal y establecer `DATABASE_URL` y `SECRET_KEY` antes de importar `app`; nunca usar la base de la finca.
+
+## Reglas que deben preservarse
+- El administrador gestiona cuentas, pero no puede leer el ganado de otros usuarios. Resuelve siempre el propietario desde la sesión; no aceptes un `user_id` del cliente para escoger datos.
+- Las escrituras requieren el token `X-CSRF-Token`. Un rechazo debe dejar intacto el estado persistido.
+- No cambies los intervalos reproductivos ni las reglas de monta como efecto secundario de otro cambio.
+- Conserva los nombres de claves JSON en español y las respuestas de error comprensibles para el usuario.
+- No publiques `.env`, `instance`, bases, contraseñas ni logs con sesiones. No modifiques `render.yaml` ni ejecutes `migrate_to_cloud.py --apply` para resolver el taller.
+
+## Convenciones para el taller
+Usa `snake_case` en Python y `camelCase`/`PascalCase` en TypeScript. Conserva el estilo del archivo modificado. Documenta pruebas reproducibles en cada PR. Trabaja desde `main` en `chore/memoria-y-skills`, `feat/solicitud-1` y `feat/solicitud-2`, con commits `chore:`, `feat:` o `test:` según corresponda. Cada solicitud requiere un plan de OpenCode revisado antes de implementar.
+
+Las skills específicas están en `.opencode/skills/`: `bovicontrol-api-tests` para API/aislamiento y `bovicontrol-react-ui` para cambios de interfaz. El contexto adicional de frontend está en `src/AGENTS.md`.
