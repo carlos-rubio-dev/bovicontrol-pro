@@ -1,0 +1,13 @@
+{
+  "endpoint": "PUT /api/state",
+  "sentId": [
+    "V-001"
+  ],
+  "status": 400,
+  "response": {
+    "error": "El identificador en vacas debe ser texto no vacío y sin espacios al inicio o al final."
+  },
+  "unchanged": true,
+  "recordsBefore": 6,
+  "recordsAfter": 6
+}

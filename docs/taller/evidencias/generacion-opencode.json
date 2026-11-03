@@ -1,0 +1,42 @@
+[
+  {
+    "plan": "plan-1-bovicontrol.md",
+    "session": "ses_e5e55bad6ffeowUvlTlDmBxOW9",
+    "version": "1.19.5",
+    "agent": "plan",
+    "model": {
+      "id": "glm-5.3-flash-free",
+      "providerID": "opencode",
+      "variant": "default"
+    },
+    "skills": [
+      {
+        "name": "bovicontrol-api-tests",
+        "status": "completed"
+      }
+    ],
+    "sha256": "7993daf56d38ed3bbee886abd343aca8d6ec7804f2cb60fb2bba27e76b77072b",
+    "revision_count": 0,
+    "source": "Exportación nativa de OpenCode; plan final conservado sin reescritura."
+  },
+  {
+    "plan": "plan-2-bovicontrol.md",
+    "session": "ses_e5e549c8bffeMJJt75wMtym4Nm",
+    "version": "1.19.5",
+    "agent": "plan",
+    "model": {
+      "id": "glm-5.3-flash-free",
+      "providerID": "opencode",
+      "variant": "default"
+    },
+    "skills": [
+      {
+        "name": "bovicontrol-react-ui",
+        "status": "completed"
+      }
+    ],
+    "sha256": "dfbbe1fe6e77e42595c582d4eff53e879f9ace550f7c245e3814f13c9cc5750b",
+    "revision_count": 2,
+    "source": "Exportación nativa de OpenCode; plan final conservado sin reescritura."
+  }
+]
