@@ -284,11 +284,26 @@ def get_state():
     row = AppState.query.filter_by(user_id=current_user().id).first()
     return jsonify(state=row.payload if row else {'vacas': [], 'toros': [], 'crias': [], 'reprod': [], 'partos': []}, csrf=session['csrf'])
 
+def validate_identifiers(data):
+    for collection, records in data.items():
+        seen = set()
+        for record in records:
+            if not isinstance(record, dict):
+                raise ValueError(f'El registro en {collection} no es válido.')
+            identifier = record.get('id')
+            if not isinstance(identifier, str) or not identifier.strip() or identifier != identifier.strip():
+                raise ValueError(f'El identificador en {collection} debe ser texto no vacío y sin espacios al inicio o al final.')
+            if identifier in seen:
+                raise ValueError(f'Hay un identificador repetido en {collection}.')
+            seen.add(identifier)
+
+
 @app.put('/api/state')
 def put_state():
     data = request.get_json(silent=True)
     if not isinstance(data, dict) or set(data) != {'vacas','toros','crias','reprod','partos'} or any(not isinstance(data[k], list) or len(data[k]) > 10000 for k in data):
         raise ValueError('El formato de datos no es válido.')
+    validate_identifiers(data)
     row = AppState.query.filter_by(user_id=current_user().id).first()
     previous = row.payload if row else {'vacas': [], 'reprod': []}
     previous_ids = {r.get('id') for r in previous.get('reprod', []) if isinstance(r, dict)}
