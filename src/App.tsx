@@ -800,11 +800,15 @@ function VacasScreen({ vacas, toros, onAdd, onEdit, onDelete, onProfile }: {
   vacas: Vaca[]; toros: Toro[]; onAdd: (v: Vaca) => void; onEdit: (v: Vaca) => void; onDelete: (id: string) => void; onProfile: (v: Vaca) => void
 }) {
   const [search, setSearch] = useState('')
+  const [estadoFiltro, setEstadoFiltro] = useState<Vaca['estado'] | ''>('')
   const [modal, setModal] = useState<'new' | 'edit' | null>(null)
   const [editing, setEditing] = useState<Vaca | undefined>()
   const [confirm, setConfirm] = useState<string | null>(null)
 
-  const filtered = vacas.filter(v => v.nombre.toLowerCase().includes(search.toLowerCase()) || v.id.toLowerCase().includes(search.toLowerCase()))
+  const consulta = search.trim().toLowerCase()
+  const filtered = vacas.filter(v =>
+    (v.nombre.toLowerCase().includes(consulta) || v.id.toLowerCase().includes(consulta)) &&
+    (!estadoFiltro || v.estado === estadoFiltro))
 
   return (
     <div className="p-6 h-full overflow-y-auto">
@@ -815,20 +819,36 @@ function VacasScreen({ vacas, toros, onAdd, onEdit, onDelete, onProfile }: {
       )}
       {confirm && <ConfirmDialog msg="¿Eliminar esta vaca? Esta acción no se puede deshacer." onConfirm={() => { onDelete(confirm); setConfirm(null) }} onCancel={() => setConfirm(null)} />}
 
-      <div className="flex items-center justify-between mb-5">
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6b7c5e]" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre o código..."
-            className="w-72 bg-white border border-[#d4ddd0] rounded-xl py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5a27]/30 focus:border-[#2d5a27]" />
+      <div className="flex flex-wrap gap-3 items-end mb-5">
+        <div className="w-full sm:w-72">
+          <label htmlFor="buscar-vaca" className="block text-xs font-semibold text-[#6b7c5e] mb-1.5">Buscar</label>
+          <div className="relative">
+            <Search size={15} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6b7c5e]" />
+            <input id="buscar-vaca" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre o código..."
+              className="w-full bg-white border border-[#d4ddd0] rounded-xl py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5a27]/30 focus:border-[#2d5a27]" />
+          </div>
         </div>
-        <button onClick={() => { setEditing(undefined); setModal('new') }}
-          className="flex items-center gap-2 px-4 py-2 bg-[#2d5a27] text-white rounded-xl text-sm font-medium hover:bg-[#3a7232] transition-colors shadow-sm">
+        <div className="w-full sm:w-44">
+          <label htmlFor="filtro-estado" className="block text-xs font-semibold text-[#6b7c5e] mb-1.5">Estado</label>
+          <select id="filtro-estado" value={estadoFiltro} onChange={e => setEstadoFiltro(e.target.value as Vaca['estado'] | '')}
+            className="w-full bg-white border border-[#d4ddd0] rounded-xl py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5a27]/30 focus:border-[#2d5a27]">
+            <option value="">Todos los estados</option>
+            {(['Preñada', 'Vacía', 'En celo', 'Lactando', 'Seca'] as const).map(estado => <option key={estado} value={estado}>{estado}</option>)}
+          </select>
+        </div>
+        {(search || estadoFiltro) && <button type="button" onClick={() => { setSearch(''); setEstadoFiltro('') }}
+          className="flex items-center gap-2 px-3 py-2 text-sm text-[#2d5a27] rounded-xl border border-[#d4ddd0] hover:bg-[#e8ede5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2d5a27]">
+          <X size={14} aria-hidden="true" /> Limpiar filtros
+        </button>}
+        <button type="button" onClick={() => { setEditing(undefined); setModal('new') }}
+          className="sm:ml-auto flex items-center gap-2 px-4 py-2 bg-[#2d5a27] text-white rounded-xl text-sm font-medium hover:bg-[#3a7232] transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2d5a27] focus-visible:ring-offset-2">
           <Plus size={14} /> Nueva vaca
         </button>
       </div>
 
       <div className="bg-white rounded-xl border border-[#d4ddd0] shadow-sm overflow-hidden">
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px]">
           <thead>
             <tr className="border-b border-[#d4ddd0] bg-[#f4f6f3]">
               {['Código','Nombre','Raza','Edad','Estado','Último parto','Próximo parto','Acciones'].map(h => (
@@ -855,11 +875,12 @@ function VacasScreen({ vacas, toros, onAdd, onEdit, onDelete, onProfile }: {
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && <tr><td colSpan={8} className="text-center py-10 text-sm text-[#6b7c5e]">No se encontraron vacas</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={8} className="text-center py-10 text-sm text-[#6b7c5e]">{vacas.length ? 'No hay vacas que coincidan con los filtros. Ajusta la búsqueda o el estado.' : 'No se encontraron vacas'}</td></tr>}
           </tbody>
         </table>
+        </div>
         <div className="px-4 py-3 border-t border-[#d4ddd0]">
-          <span className="text-xs text-[#6b7c5e]">Mostrando {filtered.length} de {vacas.length} registros</span>
+          <span role="status" className="text-xs text-[#6b7c5e]">Mostrando {filtered.length} de {vacas.length} registros</span>
         </div>
       </div>
     </div>
