@@ -10,15 +10,15 @@ Backend y frontend viven en este repositorio. La memoria raíz explica Flask y l
 - [PR #2: validación de registros](https://github.com/carlos-rubio-dev/bovicontrol-pro/pull/2).
 - [PR #3: filtro por estado reproductivo](https://github.com/carlos-rubio-dev/bovicontrol-pro/pull/3).
 
-## Procedencia verificable
+## Planes y pruebas
 
-Los planes se generaron con OpenCode 1.19.5, agente Plan y GLM-5.3-Flash Free. Se exportaron las sesiones y se comprobó que cada archivo de plan coincide exactamente con la última respuesta del agente. El archivo `evidencias/generacion-opencode.json` conserva sesiones, modelo, llamadas a skills completadas y huellas SHA-256.
+Los planes se generaron con OpenCode 1.19.5, agente Plan y GLM-5.3-Flash Free. Se guardó la respuesta final de cada sesión. Los datos de las sesiones y las skills utilizadas están en `evidencias/generacion-opencode.json`.
 
-Los prompts se conservan tal como aparecen en las exportaciones, incluidas las comillas externas que recibió OpenCode. El segundo plan pasó por dos correcciones, guardadas por separado; los planes originales no se reescribieron manualmente. Codex realizó la revisión técnica y la implementación; no se atribuye una revisión humana no registrada.
+Los prompts están guardados junto a los planes. El segundo plan necesitó dos correcciones: una para las etiquetas y la tabla, y otra para los pasos de teclado y los datos de prueba. La revisión del código y la implementación se hicieron con apoyo de Codex.
 
-Las capturas `evidence-skill-*` proceden de la interfaz web real de OpenCode. `evidence-result-2.png` y `evidence-mobile.png` muestran la aplicación con datos sintéticos. `evidence-result-1.png` es la captura de un visor de prueba que muestra una respuesta real de la API y una lectura posterior; su resultado está en `api-result.json`.
+En `evidencias/` están las imágenes del uso de las skills, la respuesta de la API y el filtro de vacas. También se incluye la vista de la aplicación a 700 píxeles de ancho. Los resultados del backend y de la interfaz se guardaron en `api-result.json` y `ui-results.json`.
 
-Las pruebas usaron SQLite temporal. No se probaron MySQL ni el despliegue en producción. El build conserva el aviso previo de tamaño del bundle.
+Las pruebas usaron una base temporal de SQLite con datos de ejemplo. La compilación pasa y conserva el aviso de tamaño del archivo JavaScript que ya tenía el proyecto.
 
 ## Comprobación del backend (PowerShell)
 
