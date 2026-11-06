@@ -1,6 +1,7 @@
 import os
 import secrets
 from datetime import date, timedelta
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -284,26 +285,111 @@ def get_state():
     row = AppState.query.filter_by(user_id=current_user().id).first()
     return jsonify(state=row.payload if row else {'vacas': [], 'toros': [], 'crias': [], 'reprod': [], 'partos': []}, csrf=session['csrf'])
 
-def validate_identifiers(data):
+def invalid_state_field(collection, position, field, reason):
+    raise ValueError(f'{collection}, registro {position}: el campo "{field}" {reason}.')
+
+
+def validate_state_fields(collection, position, record):
+    required_text = {
+        'vacas': ('nombre', 'raza', 'fechaNacimiento'),
+        'toros': ('nombre', 'raza', 'fechaNacimiento'),
+        'crias': ('nombre', 'fechaNacimiento'),
+        'reprod': ('vacaId', 'toroId', 'fecha'),
+        'partos': ('vacaId', 'fecha'),
+    }
+    optional_text = {
+        'vacas': ('observaciones', 'padre', 'madre'),
+        'toros': ('observaciones',),
+        'crias': ('madre', 'padre', 'observaciones'),
+        'reprod': ('observaciones',),
+        'partos': ('criaId', 'observaciones'),
+    }
+    choices = {
+        'vacas': {'estado': ('Preñada', 'Vacía', 'En celo', 'Lactando', 'Seca')},
+        'toros': {'estado': ('Activo', 'En cuarentena', 'Inactivo')},
+        'crias': {'sexo': ('Hembra', 'Macho'), 'estado': ('Saludable', 'En observación', 'Enfermo')},
+        'reprod': {'tipo': ('Natural', 'IA', 'FTIV')},
+        'partos': {'tipo': ('Normal', 'Distócico', 'Cesárea')},
+    }
+    date_fields = {
+        'vacas': ('fechaNacimiento', 'ultimoParto', 'proximoParto'),
+        'toros': ('fechaNacimiento',),
+        'crias': ('fechaNacimiento', 'fechaDestete'),
+        'reprod': ('fecha', 'fechaParto', 'fechaDestete', 'fechaReinicio'),
+        'partos': ('fecha',),
+    }
+    for field in required_text[collection]:
+        value = record.get(field)
+        if not isinstance(value, str) or not value.strip():
+            invalid_state_field(collection, position, field, 'es obligatorio y debe ser texto')
+    for field in optional_text[collection]:
+        if field in record and not isinstance(record[field], str):
+            invalid_state_field(collection, position, field, 'debe ser texto')
+    for field, allowed in choices[collection].items():
+        if field in ('estado', 'sexo') or field in record:
+            if record.get(field) not in allowed:
+                invalid_state_field(collection, position, field, 'tiene un valor no permitido')
+    for field in date_fields[collection]:
+        if field not in record and field not in required_text[collection]:
+            continue
+        value = record.get(field)
+        if value == '' and field not in required_text[collection]:
+            continue
+        if not isinstance(value, str):
+            invalid_state_field(collection, position, field, 'debe ser una fecha válida (AAAA-MM-DD)')
+        try:
+            parsed = date.fromisoformat(value)
+        except ValueError:
+            invalid_state_field(collection, position, field, 'debe ser una fecha válida (AAAA-MM-DD)')
+        if parsed.isoformat() != value:
+            invalid_state_field(collection, position, field, 'debe ser una fecha válida (AAAA-MM-DD)')
+    for field in ('peso', 'pesoNacimiento'):
+        if field not in record or record[field] == '':
+            continue
+        value = record[field]
+        if isinstance(value, bool) or not isinstance(value, (str, int, float)):
+            invalid_state_field(collection, position, field, 'debe ser un número mayor que cero')
+        try:
+            number = Decimal(str(value))
+        except InvalidOperation:
+            invalid_state_field(collection, position, field, 'debe ser un número mayor que cero')
+        if not number.is_finite() or number <= 0:
+            invalid_state_field(collection, position, field, 'debe ser un número mayor que cero')
+    if collection == 'vacas' and 'partos' in record:
+        value = record['partos']
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            invalid_state_field(collection, position, 'partos', 'debe ser un número entero no negativo')
+
+
+def validate_state(data):
     for collection, records in data.items():
         seen = set()
-        for record in records:
+        for position, record in enumerate(records, start=1):
             if not isinstance(record, dict):
-                raise ValueError(f'El registro en {collection} no es válido.')
+                raise ValueError(f'{collection}, registro {position}: debe ser un objeto.')
             identifier = record.get('id')
             if not isinstance(identifier, str) or not identifier.strip() or identifier != identifier.strip():
-                raise ValueError(f'El identificador en {collection} debe ser texto no vacío y sin espacios al inicio o al final.')
+                invalid_state_field(collection, position, 'id', 'debe ser texto no vacío y sin espacios al inicio o al final')
             if identifier in seen:
-                raise ValueError(f'Hay un identificador repetido en {collection}.')
+                invalid_state_field(collection, position, 'id', 'está repetido en esta lista')
             seen.add(identifier)
+            validate_state_fields(collection, position, record)
 
 
 @app.put('/api/state')
 def put_state():
     data = request.get_json(silent=True)
-    if not isinstance(data, dict) or set(data) != {'vacas','toros','crias','reprod','partos'} or any(not isinstance(data[k], list) or len(data[k]) > 10000 for k in data):
-        raise ValueError('El formato de datos no es válido.')
-    validate_identifiers(data)
+    collections = ('vacas', 'toros', 'crias', 'reprod', 'partos')
+    if not isinstance(data, dict):
+        raise ValueError('El estado debe contener las listas de vacas, toros, crías, reproducción y partos.')
+    if set(data) != set(collections):
+        raise ValueError('El estado debe incluir exactamente las listas vacas, toros, crias, reprod y partos.')
+    for collection in collections:
+        if not isinstance(data[collection], list):
+            raise ValueError(f'El campo "{collection}" debe ser una lista.')
+        if len(data[collection]) > 10000:
+            raise ValueError(f'El campo "{collection}" supera el límite de 10000 registros.')
+    validate_state(data)
     row = AppState.query.filter_by(user_id=current_user().id).first()
     previous = row.payload if row else {'vacas': [], 'reprod': []}
     previous_ids = {r.get('id') for r in previous.get('reprod', []) if isinstance(r, dict)}

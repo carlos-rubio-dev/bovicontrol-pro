@@ -29,9 +29,9 @@ def main():
                 self.assertEqual(response.status_code, 200)
                 self.headers = {'X-CSRF-Token': response.json['csrf']}
                 self.state = {
-                    'vacas': [{'id': 'V-001', 'nombre': 'Luna', 'estado': 'Vacía'}],
-                    'toros': [{'id': 'T-001', 'estado': 'Activo'}],
-                    'crias': [{'id': 'C-001', 'madre': 'V-001'}],
+                    'vacas': [{'id': 'V-001', 'nombre': 'Luna', 'raza': 'Angus', 'fechaNacimiento': '2020-01-01', 'estado': 'Vacía'}],
+                    'toros': [{'id': 'T-001', 'nombre': 'Fuerte', 'raza': 'Angus', 'fechaNacimiento': '2019-01-01', 'estado': 'Activo'}],
+                    'crias': [{'id': 'C-001', 'nombre': 'Lucero', 'fechaNacimiento': '2025-01-01', 'sexo': 'Hembra', 'estado': 'Saludable', 'madre': 'V-001'}],
                     'partos': [{'id': 'P-001', 'vacaId': 'V-001', 'fecha': '2025-01-01'}],
                     'reprod': [{'id': 'R-001', 'vacaId': 'V-001', 'toroId': 'T-001', 'fecha': '2026-01-01'}],
                 }
@@ -50,6 +50,16 @@ def main():
             def test_valid_complete_state_round_trip(self):
                 self.assertEqual(self.client.get('/api/state').json['state'], self.state)
                 self.assertEqual(self.put(self.state).status_code, 200)
+
+            def test_valid_optional_fields(self):
+                state = copy.deepcopy(self.state)
+                state['vacas'][0].update(peso='520', partos=1, ultimoParto='2025-01-01', proximoParto='')
+                state['toros'][0]['observaciones'] = 'Activo'
+                state['crias'][0].update(peso='42', fechaDestete='2025-08-01')
+                state['reprod'][0].update(tipo='Natural', fechaParto='2026-10-11')
+                state['partos'][0].update(tipo='Normal', pesoNacimiento='42', criaId='C-001')
+                self.assertEqual(self.put(state).status_code, 200)
+                self.assertEqual(self.client.get('/api/state').json['state'], state)
 
             def test_same_identifier_in_different_lists_is_allowed(self):
                 state = copy.deepcopy(self.state)
@@ -84,10 +94,48 @@ def main():
                         state[collection].append(copy.deepcopy(state[collection][0]))
                         self.assert_rejected(state)
 
+            def test_required_fields_and_error_location(self):
+                cases = (
+                    ('vacas', 'nombre', '   '),
+                    ('vacas', 'raza', None),
+                    ('toros', 'fechaNacimiento', ''),
+                    ('crias', 'sexo', 'Desconocido'),
+                    ('reprod', 'vacaId', []),
+                    ('partos', 'fecha', '2026-02-30'),
+                )
+                for collection, field, value in cases:
+                    with self.subTest(collection=collection, field=field):
+                        state = copy.deepcopy(self.state)
+                        state[collection][0][field] = value
+                        response = self.put(state)
+                        self.assertEqual(response.status_code, 400)
+                        self.assertIn(f'{collection}, registro 1', response.json['error'])
+                        self.assertIn(f'"{field}"', response.json['error'])
+                        self.assertEqual(self.client.get('/api/state').json['state'], self.state)
+
+            def test_optional_fields_reject_bad_values(self):
+                cases = (
+                    ('vacas', 'estado', 'Desconocido'),
+                    ('vacas', 'ultimoParto', 'mañana'),
+                    ('vacas', 'peso', '-5'),
+                    ('vacas', 'partos', -1),
+                    ('toros', 'observaciones', []),
+                    ('crias', 'fechaDestete', '2026-13-01'),
+                    ('reprod', 'fechaParto', '20261011'),
+                    ('partos', 'criaId', {}),
+                )
+                for collection, field, value in cases:
+                    with self.subTest(collection=collection, field=field):
+                        state = copy.deepcopy(self.state)
+                        state[collection][0][field] = value
+                        self.assert_rejected(state)
+
             def test_outer_contract_is_preserved(self):
                 for state in ([], {}, {**self.state, 'extra': []}, {**self.state, 'vacas': {}}):
                     with self.subTest(state=state):
                         self.assert_rejected(state)
+                response = self.put({**self.state, 'vacas': {}})
+                self.assertIn('"vacas"', response.json['error'])
 
             def test_session_and_csrf_are_required(self):
                 anonymous = app.test_client()
@@ -110,7 +158,7 @@ def main():
                 headers = {'X-CSRF-Token': login.json['csrf']}
                 empty = {'vacas': [], 'toros': [], 'crias': [], 'reprod': [], 'partos': []}
                 self.assertEqual(second.get('/api/state').json['state'], empty)
-                own = {**empty, 'vacas': [{'id': 'V-001', 'nombre': 'Otra finca', 'estado': 'Vacía'}]}
+                own = {**empty, 'vacas': [{'id': 'V-001', 'nombre': 'Otra finca', 'raza': 'Angus', 'fechaNacimiento': '2020-01-01', 'estado': 'Vacía'}]}
                 self.assertEqual(second.put('/api/state', json=own, headers=headers).status_code, 200)
                 invalid = {**own, 'vacas': [{'id': ['V-001']}]}
                 self.assertEqual(second.put('/api/state', json=invalid, headers=headers).status_code, 400)

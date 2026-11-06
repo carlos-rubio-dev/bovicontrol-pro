@@ -1,4 +1,3 @@
 *.pdf binary
 *.png binary
-plan-*.md text eol=lf
-evidencias/planes-originales/*.md -text -eol
+plan-*.md -text -eol

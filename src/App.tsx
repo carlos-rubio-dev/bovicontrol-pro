@@ -1713,7 +1713,7 @@ export default function App() {
     <div className="flex h-screen overflow-hidden bg-[#f4f6f3]">
       <Sidebar current={screen} onNav={setScreen} collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} onLogout={handleLogout} account={account!} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        {saveError && <div role="alert" className="bg-red-100 text-red-800 px-4 py-2 text-sm">{saveError}. Revisa la conexión antes de continuar.</div>}
+        {saveError && <div role="alert" className="bg-red-100 text-red-800 px-4 py-2 text-sm">{saveError}</div>}
         <Topbar title={screenTitles[screen]} syncStatus={syncStatus} onSync={handleSync} pendingCount={pendingNotifs} onBell={() => setScreen('notificaciones')} />
         <main className="flex-1 overflow-hidden">{renderContent()}</main>
       </div>
