@@ -17,7 +17,7 @@
     ],
     "sha256": "7993daf56d38ed3bbee886abd343aca8d6ec7804f2cb60fb2bba27e76b77072b",
     "revision_count": 0,
-    "source": "Exportación nativa de OpenCode conservada en evidencias/planes-originales/plan-1-bovicontrol.md; la versión de entrega es un resumen editado."
+    "source": "Exportación nativa de OpenCode conservada sin reescritura en plan-1-bovicontrol.md."
   },
   {
     "plan": "plan-2-bovicontrol.md",
@@ -37,6 +37,6 @@
     ],
     "sha256": "dfbbe1fe6e77e42595c582d4eff53e879f9ace550f7c245e3814f13c9cc5750b",
     "revision_count": 2,
-    "source": "Exportación nativa de OpenCode conservada en evidencias/planes-originales/plan-2-bovicontrol.md; la versión de entrega es un resumen editado."
+    "source": "Exportación nativa de OpenCode conservada sin reescritura en plan-2-bovicontrol.md."
   }
 ]

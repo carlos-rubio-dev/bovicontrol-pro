@@ -18,8 +18,11 @@ with tempfile.TemporaryDirectory() as temporary_db_dir:
             self.assertEqual(created.status_code, 200)
             csrf = created.json['csrf']
             headers = {'X-CSRF-Token': csrf}
-            cow = {'id': 'V-001', 'nombre': 'Luna', 'estado': 'Vacía', 'proximoParto': '', 'ultimoParto': '', 'partos': 0}
-            bulls = [{'id': 'T-001', 'estado': 'Activo'}, {'id': 'T-002', 'estado': 'Activo'}]
+            cow = {'id': 'V-001', 'nombre': 'Luna', 'raza': 'Angus', 'fechaNacimiento': '2020-01-01', 'estado': 'Vacía', 'proximoParto': '', 'ultimoParto': '', 'partos': 0}
+            bulls = [
+                {'id': 'T-001', 'nombre': 'Fuerte', 'raza': 'Angus', 'fechaNacimiento': '2019-01-01', 'estado': 'Activo'},
+                {'id': 'T-002', 'nombre': 'Titán', 'raza': 'Brahman', 'fechaNacimiento': '2018-01-01', 'estado': 'Activo'},
+            ]
             state = {'vacas': [cow], 'toros': bulls, 'crias': [], 'reprod': [], 'partos': []}
             self.assertEqual(client.put('/api/state', json=state, headers=headers).status_code, 200)
 

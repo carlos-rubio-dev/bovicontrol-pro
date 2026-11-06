@@ -12,7 +12,7 @@ Backend y frontend viven en este repositorio. La memoria raíz explica Flask y l
 
 ## Planes y pruebas
 
-Los planes se prepararon con OpenCode 1.19.5, agente Plan y GLM-5.3-Flash Free. Los dos archivos de entrega son versiones resumidas para facilitar la lectura. Las respuestas originales, sin cambios, están en `evidencias/planes-originales/`. Los datos de las sesiones y las skills utilizadas están en `evidencias/generacion-opencode.json`.
+Los dos planes entregados son las respuestas originales de OpenCode 1.19.5, agente Plan y GLM-5.3-Flash Free. Los datos de las sesiones y las skills utilizadas están en `evidencias/generacion-opencode.json`.
 
 Los prompts están guardados junto a los planes. El segundo plan necesitó dos correcciones: una para las etiquetas y la tabla, y otra para los pasos de teclado y los datos de prueba. La revisión del código y la implementación se hicieron con apoyo de Codex.
 

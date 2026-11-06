@@ -1,19 +1,76 @@
-# Plan 2. Encontrar vacas por estado y por nombre
+# Plan 2 (final) — Filtro por estado reproductivo + búsqueda en Vacas
 
-La pantalla de vacas ya permite buscar por nombre o código, pero no por estado reproductivo. Si hay muchos registros, cuesta encontrar, por ejemplo, las vacas preñadas que se quieren revisar. La idea es añadir ese filtro y permitir que funcione junto con la búsqueda actual.
+## Objetivo
 
-## Qué se va a cambiar
+Como encargado de la finca, filtrar la lista de vacas por estado reproductivo y combinarlo (AND) con la búsqueda por nombre o código, para encontrar animales a revisar. Cambio puramente de presentación: no modifica registros ni envía `PUT /api/state`.
 
-El cambio estará en la pantalla de vacas de `src/App.tsx`. Añadiré un selector con las opciones **Todos los estados**, **Preñada**, **Vacía**, **En celo**, **Lactando** y **Seca**. La búsqueda seguirá aceptando nombres y códigos, sin importar las mayúsculas ni los espacios sobrantes.
+## Contexto y archivo afectado
 
-Los dos controles trabajarán juntos. Si se escribe “Estrella” y se selecciona “Preñada”, aparecerá Estrella solo si cumple ambas condiciones. Un botón **Limpiar filtros** devolverá la lista completa. El contador mostrará cuántas vacas se ven frente al total, y habrá un mensaje claro cuando ningún registro coincida.
+- **`src/App.tsx`**, función `VacasScreen` (src/App.tsx:799–867):
+  - Estado local `search` (src/App.tsx:802) y filtro en `filtered` (src/App.tsx:807): compara contra `v.nombre` / `v.id`, insensible a mayúsculas, pero sin `trim()` (espacios sobrantes rompen la coincidencia).
+  - La barra de búsqueda (src/App.tsx:818–828) no tiene etiqueta visible; el placeholder "Buscar por nombre o código..." no la reemplaza.
+  - No existe selector de estado; el tipo `Vaca.estado` (src/App.tsx:21) ya limita los valores a `'Preñada' | 'Vacía' | 'En celo' | 'Lactando' | 'Seca'`, idénticos a las opciones del `VacaForm` (src/App.tsx:218) y a los colores de `estadoBadge` (src/App.tsx:129).
+- **Reglas respetadas**: React + TypeScript + Tailwind sin dependencias nuevas; claves del contrato (`vacas`) intactas; cálculos e intervalos reproductivos sin cambios; ninguna otra pantalla.
 
-La búsqueda y el selector tendrán etiquetas visibles para que se entiendan y se puedan usar con teclado. En una pantalla estrecha, los controles podrán acomodarse en varias líneas y la tabla tendrá desplazamiento horizontal. Filtrar solo cambiará lo que se ve en pantalla: no guardará ni modificará registros.
+## Cambios propuestos (solo `VacasScreen`)
 
-## Cómo se comprobará
+1. **Nuevos estados locales**:
+   - `estadoFiltro` (cadena vacía = "Todos los estados").
+   - Normalización de búsqueda: `const consulta = search.trim().toLowerCase()`.
+2. **Etiquetas visibles para ambos controles**:
+   - Búsqueda: `<label htmlFor="buscar-vaca">Buscar</label>` + `<input id="buscar-vaca">` nativo, estilos actuales (borde `#d4ddd0`, `rounded-xl`, foco `ring-[#2d5a27]/30`); se conserva el icono `Search`, pero la etiqueta es la vía accesible, no el placeholder.
+   - Selector: `<label htmlFor="filtro-estado">Estado</label>` + `<select id="filtro-estado">` nativo.
+3. **Selector de estado** con opciones: `Todos los estados` (value `''`), `Preñada`, `Vacía`, `En celo`, `Lactando`, `Seca`.
+4. **Filtro combinado con AND**: `filtered = vacas.filter(v => coincideBusqueda && (estadoFiltro === '' || v.estado === estadoFiltro))`, donde `coincideBusqueda` compara `consulta` contra `v.nombre.toLowerCase()` y `v.id.toLowerCase()`; `consulta === ''` no filtra nada.
+5. **Botón "Limpiar filtros"**: `<button type="button">` con `<X>` de lucide-react (ya presente) + texto; reinicia `search` y `estadoFiltro`; visible solo con filtros activos.
+6. **Contador actualizado**: la banda inferior (src/App.tsx:862) "Mostrando X de Y registros" se conserva y refleja el cruce AND automáticamente.
+7. **Estado vacío** (src/App.tsx:858): si `vacas.length > 0` y `filtered.length === 0`, mensaje "No hay vacas que coincidan con los filtros. Ajusta la búsqueda o el estado."; si `vacas.length === 0`, se mantiene "No se encontraron vacas".
+8. **Layout responsivo**:
+   - Contenedor de controles (src/App.tsx:818): `flex flex-wrap gap-3 items-end` con etiquetas encima de sus controles.
+   - **Tabla con scroll horizontal propio**: envolver el `<table>` (src/App.tsx:831) en `<div className="overflow-x-auto">` dentro del card (src/App.tsx:830); `<table>` conserva `w-full` y añade `min-w-[720px]` para no recortar columnas a 700 px.
 
-Usaré seis vacas de prueba con estados diferentes. Revisaré búsquedas por nombre y código, cada opción del selector y combinaciones de ambos filtros. También comprobaré que **Limpiar filtros** restablezca la lista, que el contador sea correcto y que el mensaje aparezca cuando no haya coincidencias.
+Sin cambios en modal, `ConfirmDialog`, `VacaForm`, `VacaProfile`, `TorosScreen`, sincronización ni `render.yaml`.
 
-Haré una revisión con teclado y otra a 700 píxeles de ancho. En la red del navegador comprobaré que usar los filtros no genere nuevas solicitudes `PUT /api/state`. Por último, ejecutaré la compilación y la prueba de reproducción existente.
+## Pruebas (procedimiento reproducible, datos sintéticos)
 
-Este es un resumen editado del plan preparado en OpenCode. La salida original se conserva en las evidencias del proyecto.
+**Datos sintéticos** en base temporal de Flask (`DATABASE_URL` apuntando a una base de prueba; la muestra de `App.tsx` no se usa como datos reales). Crear usuario vía `/api/setup` + `/api/login` y registrar **6 vacas** con estado fijado:
+
+| Vaca | Estado |
+|---|---|
+| Luna | Vacía |
+| Estrella | Preñada |
+| Canela | Lactando |
+| Paloma | Preñada |
+| Rosa | En celo |
+| Niebla | Seca |
+
+Códigos con prefijo común `V-001`…`V-006` para probar coincidencias parciales.
+
+Referencias para las pruebas: Barra de búsqueda = src/App.tsx:818–828; Selector = bloque nuevo a insertar; Tabla = src/App.tsx:830–864 (estado vacío en 858, contador en 862).
+
+1. **Búsqueda por nombre**: escribir "  Estrella  " (con espacios) → exactamente Estrella; "canel" → Canela; variantes de mayúsculas ("LUNA", "luna") → misma fila.
+2. **Búsqueda por código**: "v-0" → las 6; "V-004" → exactamente la 4ª.
+3. **Selector solo**: "Preñada" → Estrella y Paloma ("Mostrando 2 de 6"); "Vacía" → solo Luna; "En celo" → solo Rosa; "Seca" → solo Niebla; "Lactando" → solo Canela ("1 de 6").
+4. **Combinación AND**: "Lactando" + "Canela" → 1 fila (Canela); "Lactando" + "Rosa" → 0 filas; "Preñada" + "Luna" → 0 filas. Con 0: mensaje "No hay vacas que coincidan..." (no el genérico).
+5. **Limpiar filtros**: con Prueba 4 activo, pulsar el botón → contador "6 de 6", selector en "Todos los estados", input vacío; repetir con otra combinación para confirmar que ambos controles siempre se reinician.
+6. **Teclado y foco** (las etiquetas **no** reciben Tab; el foco va directo a los controles):
+   - Tab desde el header: input búsqueda → select → botones de la sección ("Limpiar filtros" si visible, luego "Nueva vaca"); **Tab no detiene el foco en las etiquetas ni en las celdas ordinarias de la tabla** (solo controles: input, select, botones de acciones de fila y encabezados accionables si existieran).
+   - En cada control enfocado, indicador visual claro (ring verde visible, no solo color).
+   - `<select>` con flechas: al cambiar opción, filas y contador se actualizan de inmediato sin recargar.
+   - `<input>` y `<select>` operables y anunciados por sus etiquetas ("Buscar", "Estado"); el placeholder solo refuerza.
+7. **Red (cero escrituras)**: abrir la página de Vacas en DevTools → Network con filtro `api/state`; **contar los `PUT /api/state` de esa misma página antes de filtrar** (referencia tras el último guardado real) y **comparar con el contador después de aplicar búsqueda, selector, combinaciones de Prueba 4 y "Limpiar filtros"**: el número tras filtrar debe ser idéntico al antes; ninguna petición nueva con carga de estado. Verificar también con recarga que los registros persistidos no cambiaron.
+8. **Pantalla estrecha (700 px)**: controles (`Buscar`+input, `Estado`+select, botones) se apilan con `flex-wrap` sin solaparse; la tabla navega con la barra horizontal del nuevo `<div class="overflow-x-auto">`, sin columnas cortadas. Capturas reales (no simuladas).
+9. **Compilación y despliegue**: `npm.cmd ci` (si procede) y `npm.cmd run build` → `static/dist` regenerado y versionado junto al fuente (según `src/AGENTS.md`); app servida por Flask en `http://127.0.0.1:5000`, revisión manual de la pantalla de Vacas con el build.
+10. **Regresión backend**: `.\.venv\Scripts\python.exe tests/test_reproduction.py` sigue pasando (el cambio es de presentación, no debe tocar reglas reproductivas).
+
+## Riesgos y mitigaciones
+
+- **Ignorar `estadoFiltro` en el AND** → cobertura dedicada en la Prueba 4 (cruce con 1 y con 0 resultados).
+- **Espacios sobrantes en la consulta** → `trim()` antes de `toLowerCase()`; cubierto en la Prueba 1.
+- **Accesibilidad insuficiente** → etiquetas visibles en ambos controles, placeholder solo refuerzo; foco verificado en la Prueba 6, incluido que no aterriza en etiquetas ni celdas ordinarias.
+- **Recorte de columnas a 700 px** → `overflow-x-auto` en contenedor propio + `min-w-[720px]`; validado en la Prueba 8.
+- **Falsa alarma de escrituras** → el conteo de `PUT /api/state` antes/después (Prueba 7) separa el guardado real de eventos del filtrado; si se edita una vaca durante la prueba, repetir con nueva referencia.
+
+## Entregable
+
+- Plan guardado como **`plan-2-bovicontrol.md`** al aprobarse; implementación posterior desde `main` via `feat/solicitud-2`, commit `feat:`, capturas reales documentadas en el PR (según convención del repo).
