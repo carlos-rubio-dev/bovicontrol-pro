@@ -29,9 +29,9 @@ Ejecuta cada archivo de pruebas como script separado: el actual importa la aplic
 - Las escrituras requieren el token `X-CSRF-Token`. Un rechazo debe dejar intacto el estado persistido.
 - No cambies los intervalos reproductivos ni las reglas de monta como efecto secundario de otro cambio.
 - Conserva los nombres de claves JSON en español y las respuestas de error comprensibles para el usuario.
-- No publiques `.env`, `instance`, bases, contraseñas ni logs con sesiones. No modifiques `render.yaml` ni ejecutes `migrate_to_cloud.py --apply` para resolver el taller.
+- No publiques `.env`, `instance`, bases, contraseñas ni logs con sesiones. Los cambios de despliegue y las migraciones requieren un alcance explícito.
 
-## Convenciones para el taller
-Usa `snake_case` en Python y `camelCase`/`PascalCase` en TypeScript. Conserva el estilo del archivo modificado. Documenta pruebas reproducibles en cada PR. Trabaja desde `main` en `chore/memoria-y-skills`, `feat/solicitud-1` y `feat/solicitud-2`, con commits `chore:`, `feat:` o `test:` según corresponda. Cada solicitud requiere un plan de OpenCode revisado antes de implementar.
+## Convenciones de desarrollo
+Usa `snake_case` en Python y `camelCase`/`PascalCase` en TypeScript. Conserva el estilo del archivo modificado. Documenta la validación en cada PR. Las ramas parten de `main` y los commits describen el cambio. Los cambios funcionales se planifican antes de implementar.
 
 Las skills específicas están en `.opencode/skills/`: `bovicontrol-api-tests` para API/aislamiento y `bovicontrol-react-ui` para cambios de interfaz. El contexto adicional de frontend está en `src/AGENTS.md`.
