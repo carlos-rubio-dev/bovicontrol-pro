@@ -13,4 +13,3 @@ Usa el cliente de pruebas Flask. Obtén CSRF en `/api/session`, crea la cuenta d
 
 Comprueba comportamiento: estados HTTP, JSON de error y que un PUT rechazado no cambie el GET posterior. Incluye una escritura válida, entrada malformada, ausencia de sesión, CSRF incorrecto y datos separados entre cuentas cuando sean relevantes al cambio. No desactives autenticación ni CSRF para facilitar las pruebas.
 
-Ejecuta los scripts de tests por separado, incluida la regresión reproductiva. Informa comando, resultado real y límites de cobertura; no afirmes haber probado MySQL si solo se usó SQLite. Esta skill no requiere descargas, credenciales, llamadas externas ni scripts adicionales.
