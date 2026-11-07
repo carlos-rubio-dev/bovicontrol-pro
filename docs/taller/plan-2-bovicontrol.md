@@ -71,6 +71,3 @@ Referencias para las pruebas: Barra de búsqueda = src/App.tsx:818–828; Select
 - **Recorte de columnas a 700 px** → `overflow-x-auto` en contenedor propio + `min-w-[720px]`; validado en la Prueba 8.
 - **Falsa alarma de escrituras** → el conteo de `PUT /api/state` antes/después (Prueba 7) separa el guardado real de eventos del filtrado; si se edita una vaca durante la prueba, repetir con nueva referencia.
 
-## Entregable
-
-- Plan guardado como **`plan-2-bovicontrol.md`** al aprobarse; implementación posterior desde `main` via `feat/solicitud-2`, commit `feat:`, capturas reales documentadas en el PR (según convención del repo).
