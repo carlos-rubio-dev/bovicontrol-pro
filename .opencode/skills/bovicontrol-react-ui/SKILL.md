@@ -12,5 +12,3 @@ Mantén los filtros como estado de presentación y deriva los registros visibles
 Asigna etiquetas accesibles a input/select, usa botones con texto claro y verifica foco visible, teclado y distribución en pantalla estrecha. Evita depender solo del color para comunicar el estado del animal.
 
 Prueba con datos sintéticos en una base temporal: búsqueda por código y nombre, combinación de filtros, cero coincidencias, restablecimiento y actualización de la lista. Verifica que filtrar no produzca una escritura a `/api/state`.
-
-Ejecuta `npm.cmd run build`, revisa el navegador y conserva una captura real del resultado. Versiona los archivos generados de `static/dist` junto al fuente cuando corresponda. No inventes capturas ni resultados. Esta skill no incluye ejecutables, descargas ni acceso a credenciales.
