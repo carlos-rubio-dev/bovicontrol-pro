@@ -104,6 +104,13 @@ function hasPendingReproduction(vacaId: string, reprod: Reproduccion[], partos: 
   return reprod.some(r => r.vacaId === vacaId && (!lastBirth || r.fecha > lastBirth))
 }
 
+// Indica si el animal tiene reproducciones o partos que aún lo referencian.
+function hasLinkedHistory(kind: 'vaca' | 'toro' | 'cria', id: string, reprod: Reproduccion[], partos: Parto[]) {
+  if (kind === 'toro') return reprod.some(r => r.toroId === id)
+  if (kind === 'cria') return partos.some(p => p.criaId && p.criaId === id)
+  return reprod.some(r => r.vacaId === id) || partos.some(p => p.vacaId === id)
+}
+
 const DAYS_TO_WATCH_ESTRUS = 50
 const DAYS_TO_REBREED = 60
 const AVERAGE_ESTRUS_CYCLE = 21
@@ -1573,8 +1580,10 @@ export default function App() {
   const [booting, setBooting] = useState(true)
   const [cloudPending, setCloudPending] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [deleteError, setDeleteError] = useState('')
   const csrf = useRef('')
   const queue = useRef(Promise.resolve())
+  useEffect(() => setDeleteError(''), [screen, authenticated])
 
   const loadState = async () => {
     const response = await fetch('/api/state')
@@ -1623,15 +1632,36 @@ export default function App() {
   // CRUD helpers
   const addVaca = (v: Vaca) => setVacas(p => [...p, { ...v, id: nextId(p, 'V') }])
   const editVaca = (v: Vaca) => setVacas(p => p.map(x => x.id === v.id ? v : x))
-  const delVaca = (id: string) => setVacas(p => p.filter(x => x.id !== id))
+  const delVaca = (id: string) => {
+    if (hasLinkedHistory('vaca', id, reprod, partos)) {
+      setDeleteError('No se puede eliminar una vaca con reproducciones o partos registrados. Elimina primero los registros vinculados.')
+      return
+    }
+    setDeleteError('')
+    setVacas(p => p.filter(x => x.id !== id))
+  }
 
   const addToro = (t: Toro) => setToros(p => [...p, { ...t, id: nextId(p, 'T') }])
   const editToro = (t: Toro) => setToros(p => p.map(x => x.id === t.id ? t : x))
-  const delToro = (id: string) => setToros(p => p.filter(x => x.id !== id))
+  const delToro = (id: string) => {
+    if (hasLinkedHistory('toro', id, reprod, partos)) {
+      setDeleteError('No se puede eliminar un toro con reproducciones registradas. Elimina primero los registros vinculados.')
+      return
+    }
+    setDeleteError('')
+    setToros(p => p.filter(x => x.id !== id))
+  }
 
   const addCria = (c: Cria) => setCrias(p => [...p, { ...c, id: nextId(p, 'C') }])
   const editCria = (c: Cria) => setCrias(p => p.map(x => x.id === c.id ? c : x))
-  const delCria = (id: string) => setCrias(p => p.filter(x => x.id !== id))
+  const delCria = (id: string) => {
+    if (hasLinkedHistory('cria', id, reprod, partos)) {
+      setDeleteError('No se puede eliminar una cría vinculada a un parto registrado. Elimina primero el registro de parto.')
+      return
+    }
+    setDeleteError('')
+    setCrias(p => p.filter(x => x.id !== id))
+  }
 
   const addReprod = (r: Reproduccion) => {
     setReprod(p => [...p, { ...r, id: nextId(p, 'R') }])
@@ -1714,6 +1744,7 @@ export default function App() {
       <Sidebar current={screen} onNav={setScreen} collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} onLogout={handleLogout} account={account!} />
       <div className="flex-1 flex flex-col overflow-hidden">
         {saveError && <div role="alert" className="bg-red-100 text-red-800 px-4 py-2 text-sm">{saveError}</div>}
+        {deleteError && <div role="alert" className="bg-red-100 text-red-800 px-4 py-2 text-sm">{deleteError}</div>}
         <Topbar title={screenTitles[screen]} syncStatus={syncStatus} onSync={handleSync} pendingCount={pendingNotifs} onBell={() => setScreen('notificaciones')} />
         <main className="flex-1 overflow-hidden">{renderContent()}</main>
       </div>
