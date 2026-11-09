@@ -190,6 +190,16 @@ test('AC6: filtrar y limpiar no envían PUT ni cambian el estado persistido', as
   expect(final).toEqual(estadoFixture)
 })
 
+test('AC4: una lista inicialmente vacía muestra ausencia de registros', async ({ page }) => {
+  await login(page)
+  expect((await putState(page, { ...estadoFixture, toros: [] })).status()).toBe(200)
+  await page.reload()
+  await irToros(page)
+  await expect(page.getByText(/No hay toros registrados/i)).toBeVisible()
+  await expect(page.getByRole('status')).toHaveText(/Mostrando 0 de 0 registros/)
+  await expect(page.getByText(/Ningún toro coincide con los filtros/i)).toHaveCount(0)
+})
+
 test.afterEach(async ({ page }, info) => {
   // Restaura el fixture de ui_fixture.py pase lo que pase (baseline.spec.ts depende de él).
   let salida = await putState(page, estadoFixture)

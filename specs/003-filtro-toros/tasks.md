@@ -1,8 +1,8 @@
 # Tareas — 003 Filtro de toros por estado
 
 ## Verificador (pruebas antes de producción)
-- [ ] T1. Escribir `tests/ui/bulls.spec.ts` cubriendo AC1–AC6 sobre el fixture (Fuerte, Titán, Zeus) y ejecutarla para registrar el fallo esperado.
-- [ ] T2. Registrar el resultado rojo observado.
+- [x] T1. Escribir `tests/ui/bulls.spec.ts` cubriendo AC1–AC6 sobre el fixture (Fuerte, Titán, Zeus) y ejecutarla para registrar el fallo esperado. — 6 pruebas, restauración de fixture en afterEach.
+- [x] T2. Registrar el resultado rojo observado. — 6 failed: no se encuentran combobox 'Estado del toro', label 'Buscar toro', role status ni 'Limpiar filtros'.
 
 ## Interfaz (producción frontend, no tocar pruebas)
 - [ ] T3. Implementar el filtro de estado, búsqueda etiquetada, limpiar, contador accesible, mensaje específico y layout 700 px en `TorosScreen`.
