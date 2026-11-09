@@ -7,6 +7,8 @@ from pathlib import Path
 
 with tempfile.TemporaryDirectory() as temporary_db_dir:
     os.environ['DATABASE_URL'] = 'sqlite:///' + (Path(temporary_db_dir) / 'check.db').as_posix()
+    os.environ['SECRET_KEY'] = 'isolated-reproduction-tests'
+    os.environ['CLOUD_MODE'] = '0'
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from app import app, db
 
@@ -47,7 +49,9 @@ with tempfile.TemporaryDirectory() as temporary_db_dir:
             second['fecha'] = '2026-12-10'
             self.assertEqual(client.put('/api/state', json=state, headers=headers).status_code, 200)
 
-    unittest.main(exit=False)
+    test_run = unittest.main(exit=False)
     with app.app_context():
         db.session.remove()
         db.engine.dispose()
+
+raise SystemExit(0 if test_run.result.wasSuccessful() else 1)
