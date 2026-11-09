@@ -1122,10 +1122,16 @@ function CriasScreen({ crias, vacas, toros, onAdd, onEdit, onDelete }: {
   crias: Cria[]; vacas: Vaca[]; toros: Toro[]; onAdd: (c: Cria) => void; onEdit: (c: Cria) => void; onDelete: (id: string) => void
 }) {
   const [search, setSearch] = useState('')
+  const [sexoFilter, setSexoFilter] = useState<Cria['sexo'] | ''>('')
+  const [saludFilter, setSaludFilter] = useState<Cria['estado'] | ''>('')
   const [modal, setModal] = useState<'new' | 'edit' | null>(null)
   const [editing, setEditing] = useState<Cria | undefined>()
   const [confirm, setConfirm] = useState<string | null>(null)
-  const filtered = crias.filter(c => c.nombre.toLowerCase().includes(search.toLowerCase()) || c.id.toLowerCase().includes(search.toLowerCase()))
+  const consulta = search.trim().toLowerCase()
+  const filtered = crias.filter(c =>
+    (c.nombre.trim().toLowerCase().includes(consulta) || c.id.trim().toLowerCase().includes(consulta)) &&
+    (!sexoFilter || c.sexo === sexoFilter) &&
+    (!saludFilter || c.estado === saludFilter))
   const vacaName = (id: string) => vacas.find(v => v.id === id)?.nombre ?? id
   const toroName = (id: string) => toros.find(t => t.id === id)?.nombre ?? id
 
@@ -1138,19 +1144,42 @@ function CriasScreen({ crias, vacas, toros, onAdd, onEdit, onDelete }: {
       )}
       {confirm && <ConfirmDialog msg="¿Eliminar esta cría?" onConfirm={() => { onDelete(confirm); setConfirm(null) }} onCancel={() => setConfirm(null)} />}
 
-      <div className="flex items-center justify-between mb-5">
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6b7c5e]" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar cría..."
-            className="w-64 bg-white border border-[#d4ddd0] rounded-xl py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5a27]/30" />
+      <div className="flex flex-wrap gap-3 items-end justify-between mb-5">
+        <div className="w-full sm:w-60">
+          <label htmlFor="buscar-cria" className="block text-xs font-semibold text-[#6b7c5e] mb-1.5">Buscar cría</label>
+          <div className="relative">
+            <Search size={15} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6b7c5e]" />
+            <input id="buscar-cria" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar cría..."
+              className="w-full bg-white border border-[#d4ddd0] rounded-xl py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5a27]/30 focus:border-[#2d5a27]" />
+          </div>
         </div>
-        <button onClick={() => { setEditing(undefined); setModal('new') }}
-          className="flex items-center gap-2 px-4 py-2 bg-[#2d5a27] text-white rounded-xl text-sm font-medium hover:bg-[#3a7232] transition-colors">
+        <div className="w-full sm:w-44">
+          <label htmlFor="sexo-cria" className="block text-xs font-semibold text-[#6b7c5e] mb-1.5">Sexo</label>
+          <select id="sexo-cria" value={sexoFilter} onChange={e => setSexoFilter(e.target.value as Cria['sexo'] | '')}
+            className="w-full bg-white border border-[#d4ddd0] rounded-xl py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5a27]/30 focus:border-[#2d5a27]">
+            <option value="">Todos</option>
+            {(['Macho', 'Hembra'] as const).map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div className="w-full sm:w-44">
+          <label htmlFor="salud-cria" className="block text-xs font-semibold text-[#6b7c5e] mb-1.5">Estado de salud</label>
+          <select id="salud-cria" value={saludFilter} onChange={e => setSaludFilter(e.target.value as Cria['estado'] | '')}
+            className="w-full bg-white border border-[#d4ddd0] rounded-xl py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5a27]/30 focus:border-[#2d5a27]">
+            <option value="">Todos</option>
+            {(['Saludable', 'En observación', 'Enfermo'] as const).map(e => <option key={e} value={e}>{e}</option>)}
+          </select>
+        </div>
+        <button type="button" onClick={() => { setSearch(''); setSexoFilter(''); setSaludFilter('') }}
+          className="flex items-center gap-2 px-3 py-2 text-sm text-[#2d5a27] bg-white rounded-xl border border-[#d4ddd0] hover:bg-[#e8ede5] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2d5a27]">
+          <X size={14} aria-hidden="true" /> Limpiar filtros
+        </button>
+        <button type="button" onClick={() => { setEditing(undefined); setModal('new') }}
+          className="flex items-center gap-2 px-4 py-2 bg-[#2d5a27] text-white rounded-xl text-sm font-medium hover:bg-[#3a7232] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2d5a27] focus-visible:ring-offset-2">
           <Plus size={14} /> Registrar cría
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered.map(c => (
           <div key={c.id} className="bg-white rounded-xl border border-[#d4ddd0] shadow-sm p-5 hover:shadow-md transition-shadow">
             <div className="flex gap-3 mb-4">
@@ -1180,8 +1209,14 @@ function CriasScreen({ crias, vacas, toros, onAdd, onEdit, onDelete }: {
           </div>
         ))}
         {filtered.length === 0 && (
-          <div className="col-span-3 text-center py-16 text-sm text-[#6b7c5e]">No se encontraron crías registradas</div>
+          <div className="text-center py-16 text-sm text-[#6b7c5e] col-span-1 sm:col-span-2 xl:col-span-3">
+            {crias.length > 0 ? 'Ninguna cría coincide con los filtros aplicados' : 'No hay crías registradas'}
+          </div>
         )}
+      </div>
+
+      <div className="mt-4">
+        <span role="status" aria-live="polite" className="text-xs text-[#6b7c5e]">Mostrando {filtered.length} de {crias.length} registros</span>
       </div>
     </div>
   )
