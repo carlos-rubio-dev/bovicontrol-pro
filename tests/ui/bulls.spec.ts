@@ -120,44 +120,47 @@ test('AC4: sin coincidencias muestra el mensaje específico de filtros', async (
   await expect(page.getByRole('status')).toHaveText(/Mostrando 0 de 3 registros/)
 })
 
-test('AC5: filtro y búsqueda por teclado y controles acomodados a 700 px', async ({ page }) => {
-  test.use({ viewport: { width: 700, height: 800 } })
-  await login(page)
-  await irToros(page)
+test.describe('AC5: filtro y búsqueda por teclado y controles acomodados a 700 px', () => {
+  await page.setViewportSize({ width: 700, height: 800 })
 
-  // teclado: escribir en la búsqueda, cambiar el select con flechas, limpiar con Enter
-  const busqueda = buscarToro(page)
-  await busqueda.focus()
-  await page.keyboard.type('fuerte')
-  const selector = selectorEstado(page)
-  await selector.focus()
-  await page.keyboard.press('ArrowDown') // pasa a 'Activo'
-  await expect(page.getByRole('row').filter({ hasText: 'Fuerte' })).toHaveCount(1)
-  await expect(page.getByRole('row').filter({ hasText: 'Titán' })).toHaveCount(0)
-  await limpiar(page).focus()
-  await page.keyboard.press('Enter')
-  await expect(busqueda).toHaveValue('')
-  await expect(selector.locator('option:checked')).toHaveText('Todos los estados')
+    test('teclado y distribución a 700 px', async ({ page }) => {
+      await login(page)
+      await irToros(page)
 
-  // a 700 px de ancho los controles de la cabecera caben en el viewport
-  for (const control of [busqueda, selector, limpiar(page), page.getByRole('button', { name: 'Nuevo toro' })]) {
-    const caja = await control.boundingBox()
-    expect(caja).toBeTruthy()
-    expect(caja!.x).toBeGreaterThanOrEqual(0)
-    expect(caja!.x + caja!.width).toBeLessThanOrEqual(700)
-  }
+      // teclado: escribir en la búsqueda, cambiar el select con flechas, limpiar con Enter
+      const busqueda = buscarToro(page)
+      await busqueda.focus()
+      await page.keyboard.type('fuerte')
+      const selector = selectorEstado(page)
+      await selector.focus()
+      await page.keyboard.press('ArrowDown') // pasa a 'Activo'
+      await expect(page.getByRole('row').filter({ hasText: 'Fuerte' })).toHaveCount(1)
+      await expect(page.getByRole('row').filter({ hasText: 'Titán' })).toHaveCount(0)
+      await limpiar(page).focus()
+      await page.keyboard.press('Enter')
+      await expect(busqueda).toHaveValue('')
+      await expect(selector.locator('option:checked')).toHaveText('Todos los estados')
 
-  // la tabla tiene desplazamiento horizontal propio
-  const desplazable = await page.getByRole('table').evaluate((tabla: HTMLElement) => {
-    let el: HTMLElement | null = tabla.parentElement
-    while (el) {
-      if (/(auto|scroll)/.test(getComputedStyle(el).overflowX) && el.scrollWidth > el.clientWidth) return true
-      el = el.parentElement
-    }
-    return false
+      // a 700 px de ancho los controles de la cabecera caben en el viewport
+      for (const control of [busqueda, selector, limpiar(page), page.getByRole('button', { name: 'Nuevo toro' })]) {
+        const caja = await control.boundingBox()
+        expect(caja).toBeTruthy()
+        expect(caja!.x).toBeGreaterThanOrEqual(0)
+        expect(caja!.x + caja!.width).toBeLessThanOrEqual(700)
+      }
+
+      // la tabla tiene desplazamiento horizontal propio
+      const desplazable = await page.getByRole('table').evaluate((tabla: HTMLElement) => {
+        let el: HTMLElement | null = tabla.parentElement
+        while (el) {
+          if (/(auto|scroll)/.test(getComputedStyle(el).overflowX) && el.scrollWidth > el.clientWidth) return true
+          el = el.parentElement
+        }
+        return false
+      })
+      expect(desplazable).toBe(true)
+    })
   })
-  expect(desplazable).toBe(true)
-})
 
 test('AC6: filtrar y limpiar no envían PUT ni cambian el estado persistido', async ({ page }) => {
   await login(page)
@@ -189,6 +192,12 @@ test('AC6: filtrar y limpiar no envían PUT ni cambian el estado persistido', as
 
 test.afterEach(async ({ page }, info) => {
   // Restaura el fixture de ui_fixture.py pase lo que pase (baseline.spec.ts depende de él).
-  await putState(page, estadoFixture)
+  let salida = await putState(page, estadoFixture)
+  if (salida.status() === 401) {
+    // El test pudo fallar antes del login; autentica y reintenta.
+    await login(page)
+    salida = await putState(page, estadoFixture)
+  }
+  expect(salida.status()).toBe(200)
   if (info.status !== 'passed') console.log(`[bulls] estado fixture restaurado tras "${info.title}"`)
 })
