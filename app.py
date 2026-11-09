@@ -343,6 +343,8 @@ def validate_state_fields(collection, position, record):
             invalid_state_field(collection, position, field, 'debe ser una fecha válida (AAAA-MM-DD)')
         if parsed.isoformat() != value:
             invalid_state_field(collection, position, field, 'debe ser una fecha válida (AAAA-MM-DD)')
+        if field == 'fechaNacimiento' and parsed > date.today():
+            invalid_state_field(collection, position, field, 'no puede ser posterior a la fecha actual')
     for field in ('peso', 'pesoNacimiento'):
         if field not in record or record[field] == '':
             continue
