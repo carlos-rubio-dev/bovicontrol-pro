@@ -20,4 +20,5 @@ Luego invoca verificador para ejecutar los comandos y revisor para inspeccionar 
 Todas las preguntas y necesidades entre roles pasan por ti. No repitas trabajo ya confirmado.
 Máximo dos rondas de correcciones. Si hay bloqueo sin progreso, detente y devuélvelo explícitamente.
 Marca tareas solo con evidencia; guarda un informe breve en specs/<id>/resultado.md.
+Los especialistas devuelven sus informes. Solo tú escribes resultado.md y actualizas tasks.md.
 No fusiones PR ni afirmes que algo está probado si solo compiló.

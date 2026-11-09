@@ -378,6 +378,23 @@ def validate_state(data):
             validate_state_fields(collection, position, record)
 
 
+def validate_state_references(data):
+    cow_ids = {r['id'] for r in data['vacas']}
+    bull_ids = {r['id'] for r in data['toros']}
+    cria_ids = {r['id'] for r in data['crias']}
+    for position, breeding in enumerate(data['reprod'], start=1):
+        if breeding['vacaId'] not in cow_ids:
+            invalid_state_field('reprod', position, 'vacaId', 'debe referenciar una vaca del mismo estado')
+        if breeding['toroId'] not in bull_ids:
+            invalid_state_field('reprod', position, 'toroId', 'debe referenciar un toro del mismo estado')
+    for position, birth in enumerate(data['partos'], start=1):
+        if birth['vacaId'] not in cow_ids:
+            invalid_state_field('partos', position, 'vacaId', 'debe referenciar una vaca del mismo estado')
+        cria_id = birth.get('criaId')
+        if isinstance(cria_id, str) and cria_id.strip() and cria_id not in cria_ids:
+            invalid_state_field('partos', position, 'criaId', 'debe referenciar una cría del mismo estado')
+
+
 @app.put('/api/state')
 def put_state():
     data = request.get_json(silent=True)
@@ -392,6 +409,7 @@ def put_state():
         if len(data[collection]) > 10000:
             raise ValueError(f'El campo "{collection}" supera el límite de 10000 registros.')
     validate_state(data)
+    validate_state_references(data)
     row = AppState.query.filter_by(user_id=current_user().id).first()
     previous = row.payload if row else {'vacas': [], 'reprod': []}
     previous_ids = {r.get('id') for r in previous.get('reprod', []) if isinstance(r, dict)}
