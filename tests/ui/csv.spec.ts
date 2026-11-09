@@ -2,24 +2,9 @@ import fs from 'node:fs'
 import { expect, test, type Page, type APIResponse, type Download } from '@playwright/test'
 import { login } from './helpers'
 
-// Spec 005: exportación CSV de las vacas visibles en VacasScreen (src/App.tsx) mediante
-// el helper puro src/csv.ts con contrato serializeCsv(filas: readonly (readonly unknown[])[]): string.
-// Fixture de tests/ui_fixture.py: V-001 Luna/Vacía, V-002 Estrella/Preñada, V-003 Paloma/Preñada,
-// raza Angus, fechaNacimiento 2020-01-01, peso '500', partos 0, últimoParto/proximoParto ''.
-// Antes de implementar, este archivo falla por dos motivos esperados y distinguibles:
-//  - los tests de navegador fallan porque no existe el botón "Exportar CSV" en VacasScreen;
-//  - los tests [csv.ts] fallan con "Cannot find module '../../src/csv'" por ausencia de src/csv.ts.
-// Errores de preparación (login o PUT con estado distinto de 200) se lanzan antes de cualquier
-// aserción de comportamiento y son fallos de entorno, no de la app.
-
-// ─── Contrato de serialización fijado por estas pruebas ─────────────────────────
-// serializeCsv produce: BOM UTF-8 + filas unidas por CRLF (sin salto final) donde cada campo
-// se rodea de comillas SOLO si contiene " , CR LF, tabulación, o espacios al inicio; las
-// comillas internas se duplican. Los encabezados (sin separadores) quedan sin comillas, que es
-// lo único compatible con AC1 (primera fila literal sin comillas) y con AC3 (los campos con
-// separadores van entre comillas). Los valores que empiezan por =, +, -, @, tab, CR — incluso
-// con espacios previos — se prefijan con apóstrofo (el apóstrofo va al inicio del valor completo)
-// antes del entrecomillado. Ceros y campos vacíos conservan su columna ('0' y '').
+// Spec 005: exportación de las vacas filtradas y serialización independiente.
+// AC3 exige comillas en todos los campos, incluidos los encabezados.
+// Las pruebas restauran el fixture después de cada caso.
 
 type EstadoUI = {
   vacas: Record<string, unknown>[]
@@ -44,7 +29,7 @@ const estadoFixture: EstadoUI = (() => {
 })()
 
 const ENCABEZADOS = ['Código', 'Nombre', 'Raza', 'Nacimiento', 'Peso (kg)', 'Estado', 'Último parto', 'Próximo parto', 'Partos'] as const
-const LINEA_ENCABEZADOS = ENCABEZADOS.join(',')
+const LINEA_ENCABEZADOS = '"Código","Nombre","Raza","Nacimiento","Peso (kg)","Estado","Último parto","Próximo parto","Partos"'
 
 const vaca = (index: number, cambios: Record<string, unknown> = {}) => ({ ...estadoFixture.vacas[index], ...cambios })
 
@@ -167,7 +152,7 @@ test('AC2: con la lista de vacas vacía el botón Exportar CSV está deshabilita
 })
 
 // ─── AC3: BOM, CRLF, entrecomillado, acentos/comas/saltos de línea ─────────────
-test('AC3: el archivo usa BOM UTF-8 y CRLF, entrecomilla los campos con separadores y conserva acentos, comas, comillas y saltos de línea', async ({ page }) => {
+test('AC3: el archivo usa BOM UTF-8 y CRLF, entrecomilla todos los campos y conserva acentos, comas, comillas y saltos de línea', async ({ page }) => {
   await irVacas(page)
   // preparación: un nombre que exige entrecomillado; si el PUT falla es de preparación
   expect((await putState(page, { ...estadoFixture, vacas: [vaca(0, { nombre: 'Órtega,\r\n"La Quitada"' }), vaca(1), vaca(2)] })).status()).toBe(200)
@@ -271,30 +256,44 @@ test('AC6: la exportación no modifica el estado persistido (comparación antes 
   expect(await getState(page)).toEqual(inicial)
 })
 
-// ─── serializeCsv sin navegador: salidas esperadas independientes ──────────────
+test('AC2: sin coincidencias el botón Exportar CSV queda deshabilitado', async ({ page }) => {
+  await irVacas(page)
+  await buscarVaca(page).fill('NO-EXISTE')
+  await expect(exportarBtn(page)).toBeDisabled()
+  expect(await getState(page)).toEqual(estadoFixture)
+})
+
+// Serialización pura: resultados esperados independientes del helper.
 test.describe('serializeCsv de src/csv.ts (sin navegador)', () => {
   const serializar = async (filas: (readonly unknown[])[]) => (await import('../../src/csv')).serializeCsv(filas)
 
-  test('AC1/AC3: encabezados exactos sin comillas, BOM UTF-8 y filas unidas por CRLF', async () => {
+  test('AC1/AC3: encabezados y campos entre comillas, BOM y CRLF', async () => {
     expect(await serializar([
       [...ENCABEZADOS],
       ['V-001', 'Luna', 'Angus', '2020-01-01', '500', 'Vacía', '', '', 0],
-    ])).toBe('\uFEFF' + LINEA_ENCABEZADOS + '\r\n' + 'V-001,Luna,Angus,2020-01-01,500,Vacía,,,0')
+    ])).toBe('\uFEFF' + LINEA_ENCABEZADOS + '\r\n' + '"V-001","Luna","Angus","2020-01-01","500","Vacía","","","0"')
   })
 
-  test('AC3: campos entre comillas, comillas internas duplicadas, comas y saltos de línea conservados', async () => {
-    expect(await serializar([['Órtega,\r\n"La Quitada"', '0', '']])).toBe('\uFEFF"Órtega,\r\n""La Quitada""",0,')
+  test('AC3: duplica comillas internas y conserva comas y saltos de línea', async () => {
+    expect(await serializar([['Órtega,\r\n"La Quitada"', '0', '']])).toBe('\uFEFF"Órtega,\r\n""La Quitada""","0",""')
   })
 
-  test('AC2: ceros y campos vacíos no pierden columnas', async () => {
-    expect(await serializar([['a', 0, '', 1]])).toBe('\uFEFFa,0,,1')
-    expect(await serializar([['', '', ''], ['x', '0', '']])).toBe('\uFEFF,,\r\nx,0,')
+  test('AC2: ceros y campos vacíos conservan su columna y sus comillas', async () => {
+    expect(await serializar([['a', 0, '', 1]])).toBe('\uFEFF"a","0","","1"')
+    expect(await serializar([['', '', ''], ['x', '0', '']])).toBe('\uFEFF"","",""\r\n"x","0",""')
   })
 
-  test('AC4: valores = + - @ tab CR y con espacios iniciales se prefijan con apóstrofo; valores inofensivos no', async () => {
-    expect(await serializar([['=SUMA(B1:B2)', '+300', '-25', '@Finca']])).toBe('\uFEFF\'=SUMA(B1:B2),\'+300,\'-25,\'@Finca')
-    expect(await serializar([['\tMacroA', '\rBloque', '  =Resta']])).toBe('\uFEFF"\'\tMacroA","\'\rBloque","\'  =Resta"')
-    expect(await serializar([['x=y', '5+6', 'a@b']])).toBe('\uFEFFx=y,5+6,a@b')
+  test('AC4: prefija los indicadores de fórmula y conserva los valores inofensivos', async () => {
+    expect(await serializar([['=SUMA(B1:B2)', '+300', '-25', '@Finca']])).toBe("\uFEFF\"'=SUMA(B1:B2)\",\"'+300\",\"'-25\",\"'@Finca\"")
+    expect(await serializar([['\tMacroA', '\rBloque', '  =Resta']])).toBe("\uFEFF\"'\tMacroA\",\"'\rBloque\",\"'  =Resta\"")
+    expect(await serializar([['x=y', '5+6', 'a@b']])).toBe('\uFEFF"x=y","5+6","a@b"')
+  })
+
+  test('AC3/AC6: conserva LF y CRLF dentro de campos sin mutar las filas', async () => {
+    const filas = [['línea1\nlínea2', '0'], ['dos\r\ntres', 'a"b']]
+    const antes = JSON.parse(JSON.stringify(filas))
+    expect(await serializar(filas)).toBe('\uFEFF"línea1\nlínea2","0"\r\n"dos\r\ntres","a""b"')
+    expect(filas).toEqual(antes)
   })
 })
 

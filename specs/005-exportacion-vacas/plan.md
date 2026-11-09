@@ -1,5 +1,8 @@
 # Plan — spec 005-exportacion-vacas
 
+## Revisión previa del contrato
+AC3 exige que todos los campos vayan entre comillas, incluidos los encabezados. Los nombres exactos de AC1 se refieren a las nueve celdas del encabezado, no a omitir sus comillas en el texto CSV. Se corrige la expectativa de las pruebas que proponía un entrecomillado selectivo; los criterios de la spec se conservan.
+
 ## Decisiones
 - Solo frontend: `VacasScreen` (src/App.tsx, bloque desde function VacasScreen) y helper puro nuevo `src/csv.ts`. Sin rutas ni backend; no hay cambios en `app.py`.
 - Contrato helper: `serializeCsv(rows: readonly (readonly unknown[])[]): string`. VacasScreen arma la primera fila de encabezados (Código, Nombre, Raza, Nacimiento, Peso (kg), Estado, Último parto, Próximo parto, Partos) y llama al helper. csv.ts no importa App.tsx.
