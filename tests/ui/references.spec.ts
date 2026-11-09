@@ -61,7 +61,7 @@ test('AC4: bloquea eliminar animales con historial vinculado y mantiene el anima
   await page.getByRole('row').filter({ hasText: 'Florencia' }).getByTitle('Eliminar').click()
   await dialogo('¿Eliminar esta vaca?').getByRole('button', { name: 'Eliminar', exact: true }).click()
   await expect(page.getByRole('alert')).toBeVisible()
-  await expect(page.getByRole('alert')).toHaveText(/\p{L}/u) // mensaje en español
+  await expect(page.getByRole('alert')).toHaveText(/No se puede eliminar una vaca con reproducciones o partos registrados/)
   await expect(page.getByRole('cell', { name: 'Florencia', exact: true })).toBeVisible()
   await page.waitForTimeout(400)
   expect(escrituras).toBe(0)
@@ -72,7 +72,7 @@ test('AC4: bloquea eliminar animales con historial vinculado y mantiene el anima
   await page.getByRole('row').filter({ hasText: 'Torbellino' }).getByTitle('Eliminar').click()
   await dialogo('¿Eliminar este toro?').getByRole('button', { name: 'Eliminar', exact: true }).click()
   await expect(page.getByRole('alert')).toBeVisible()
-  await expect(page.getByRole('alert')).toHaveText(/\p{L}/u)
+  await expect(page.getByRole('alert')).toHaveText(/No se puede eliminar un toro con reproducciones registradas/)
   await expect(page.getByRole('cell', { name: 'Torbellino', exact: true })).toBeVisible()
   await page.waitForTimeout(400)
   expect(escrituras).toBe(0)
@@ -84,7 +84,7 @@ test('AC4: bloquea eliminar animales con historial vinculado y mantiene el anima
   await tarjeta.getByRole('button').last().click()
   await dialogo('¿Eliminar esta cría?').getByRole('button', { name: 'Eliminar', exact: true }).click()
   await expect(page.getByRole('alert')).toBeVisible()
-  await expect(page.getByRole('alert')).toHaveText(/\p{L}/u)
+  await expect(page.getByRole('alert')).toHaveText(/No se puede eliminar una cría vinculada a un parto registrado/)
   await expect(page.getByText('Luz', { exact: true })).toBeVisible()
   await page.waitForTimeout(400)
   expect(escrituras).toBe(0)
@@ -94,6 +94,81 @@ test('AC4: bloquea eliminar animales con historial vinculado y mantiene el anima
   expect(estado.state.vacas.map(v => v.id)).toContain('V-001')
   expect(estado.state.toros.map(t => t.id)).toContain('T-001')
   expect(estado.state.crias.map(c => c.id)).toContain('C-001')
+  expect(estado.state).toEqual(ownState)
+})
+
+
+test('AC4: una vaca con solo parto tampoco se elimina', async ({ page }) => {
+  await login(page)
+  const state = { ...ownState, reprod: [] }
+  expect((await putState(page, state)).status()).toBe(200)
+  await page.reload()
+  await page.getByRole('button', { name: 'Vacas', exact: true }).click()
+  await page.waitForLoadState('networkidle')
+  let writes = 0
+  page.on('request', request => {
+    if (request.method() === 'PUT' && new URL(request.url()).pathname === '/api/state') writes++
+  })
+  await page.getByRole('row').filter({ hasText: 'Florencia' }).getByTitle('Eliminar').click()
+  await page.locator('div.fixed.inset-0').filter({ hasText: '¿Eliminar esta vaca?' }).getByRole('button', { name: 'Eliminar', exact: true }).click()
+  await expect(page.getByRole('alert')).toHaveText(/No se puede eliminar una vaca con reproducciones o partos registrados/)
+  await expect(page.getByRole('cell', { name: 'Florencia', exact: true })).toBeVisible()
+  await page.waitForTimeout(500)
+  expect(writes).toBe(0)
+  expect((await (await page.request.get('/api/state')).json()).state).toEqual(state)
+})
+
+for (const animal of [
+  { screen: 'Vacas', collection: 'vacas', name: 'Florencia', question: '¿Eliminar esta vaca?' },
+  { screen: 'Toros', collection: 'toros', name: 'Torbellino', question: '¿Eliminar este toro?' },
+  { screen: 'Crías', collection: 'crias', name: 'Luz', question: '¿Eliminar esta cría?' },
+] as const) {
+  test(`AC5: permite eliminar sin historial en ${animal.screen}`, async ({ page }) => {
+    await login(page)
+    const state = { ...ownState, reprod: [], partos: [] }
+    expect((await putState(page, state)).status()).toBe(200)
+    await page.reload()
+    await page.getByRole('button', { name: animal.screen, exact: true }).click()
+    if (animal.collection === 'crias') {
+      await page.locator('div.bg-white.rounded-xl').filter({ hasText: animal.name }).first().getByRole('button').last().click()
+    } else {
+      await page.getByRole('row').filter({ hasText: animal.name }).getByTitle('Eliminar').click()
+    }
+    const response = page.waitForResponse(r => r.request().method() === 'PUT' && new URL(r.url()).pathname === '/api/state')
+    await page.locator('div.fixed.inset-0').filter({ hasText: animal.question }).getByRole('button', { name: 'Eliminar', exact: true }).click()
+    expect((await response).status()).toBe(200)
+    await expect(page.getByText(animal.name, { exact: true })).toHaveCount(0)
+    const persisted = (await (await page.request.get('/api/state')).json()).state
+    expect(persisted).toEqual({ ...state, [animal.collection]: [] })
+  })
+}
+
+test('AC4: el guardado pendiente no borra el mensaje de eliminación bloqueada', async ({ page }) => {
+  await login(page)
+  expect((await putState(page, ownState)).status()).toBe(200)
+  let release: (() => Promise<void>) | undefined
+  let captured!: () => void
+  const pending = new Promise<void>(resolve => { captured = resolve })
+  await page.route('**/api/state', async route => {
+    if (route.request().method() === 'PUT' && !release) {
+      release = () => route.continue()
+      captured()
+      return
+    }
+    await route.continue()
+  })
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.getByRole('button', { name: 'Vacas', exact: true }).click()
+  await pending
+  await page.getByRole('row').filter({ hasText: 'Florencia' }).getByTitle('Eliminar').click()
+  await page.locator('div.fixed.inset-0').filter({ hasText: '¿Eliminar esta vaca?' }).getByRole('button', { name: 'Eliminar', exact: true }).click()
+  await expect(page.getByRole('alert')).toHaveText(/No se puede eliminar una vaca/)
+  const response = page.waitForResponse(r => r.request().method() === 'PUT' && new URL(r.url()).pathname === '/api/state')
+  await release!()
+  expect((await response).status()).toBe(200)
+  await page.waitForTimeout(150)
+  await expect(page.getByRole('alert')).toHaveText(/No se puede eliminar una vaca/)
+  expect((await (await page.request.get('/api/state')).json()).state).toEqual(ownState)
 })
 
 test.afterEach(async ({ page }, info) => {
