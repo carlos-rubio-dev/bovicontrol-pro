@@ -1,6 +1,6 @@
 # Memoria del frontend
 
-Complementa el `AGENTS.md` de la raíz. `main.tsx` monta la aplicación; `App.tsx` contiene pantallas, formularios, tipos y sincronización; `index.css` contiene estilos globales.
+Complementa el `AGENTS.md` de la raíz. `main.tsx` monta la aplicación; `App.tsx` contiene pantallas, formularios, tipos y sincronización; `index.css` contiene estilos globales. `csv.ts` serializa las filas de exportación con escape de campos y neutralización de indicadores de fórmula; la descarga se inicia en VacasScreen.
 
 - Conserva las claves del contrato de `/api/state`: `vacas`, `toros`, `crias`, `reprod`, `partos`.
 - Una búsqueda o filtro es estado local de presentación; no debe modificar registros ni provocar guardados.

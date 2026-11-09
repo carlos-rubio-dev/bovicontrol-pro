@@ -54,3 +54,7 @@ Comprobaciones ejecutadas:
 | `npm.cmd run test:ui` | exit 0 | 1 |
 
 La herramienta rechazó 8 intentos de comandos fuera de los permisos. No se ampliaron permisos para ejecutarlos.
+
+## Integración
+
+[Rama y PR #14](https://github.com/carlos-rubio-dev/bovicontrol-pro/pull/14) · [Comprobaciones de CI](https://github.com/carlos-rubio-dev/bovicontrol-pro/actions/runs/42700463402). Fusionado en main con 960d4b2.

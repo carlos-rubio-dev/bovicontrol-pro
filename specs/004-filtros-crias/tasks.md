@@ -13,10 +13,10 @@
 - [x] T6. Ejecutar `npm.cmd run test:ui` y confirmar suites en verde (calves, bulls, baseline, references). — 21 passed / 0 failed (34.8s): calves 7/7, resto 14/14.
 
 ## Revisor
-- [x] T7. Inspeccionar diff, criterios y evidencia; devolver veredicto AC1–AC6. — Aprobado AC1–AC6; diff acotado a CriasScreen, calves.spec.ts y static/dist; hallazgos D1–D4 en resultado.md.
+- [x] T7. Inspeccionar diff, criterios y evidencia; devolver veredicto AC1–AC6. — Aprobado AC1–AC6; diff acotado a CriasScreen, calves.spec.ts y static/dist; observaciones registradas en resultado.md.
 
 ## Coordinador
-- [x] T8. Escribir `resultado.md` con comandos, evidencia y hallazgos. — Estado, comandos observados (rojo 7 failed → build exit 0 → 21/21), tabla AC→evidencia y hallazgos D1–D4.
+- [x] T8. Escribir `resultado.md` con comandos, evidencia y hallazgos. — Estado, comandos observados (rojo 7 failed → build exit 0 → 21/21), tabla AC→evidencia y observaciones de revisión.
 
 ## Integración del build
 - [x] Incluir los nuevos archivos JavaScript y CSS junto al índice generado.
