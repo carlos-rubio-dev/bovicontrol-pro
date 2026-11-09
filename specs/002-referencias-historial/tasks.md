@@ -1,9 +1,9 @@
 # Tareas — 002 Referencias del historial
 
 ## Verificador (pruebas antes de producción)
-- [ ] T1. Escribir `tests/test_state_references.py` cubriendo AC1, AC2, AC3, AC5 y AC6 con SQLite temporal y CSRF (estilo de `tests/test_state_validation.py`).
-- [ ] T2. Escribir `tests/ui/references.spec.ts` cubriendo AC4 con eventos sintéticos y comprobación de red/persistencia.
-- [ ] T3. Ejecutar ambas suites y registrar el fallo esperado (rojo) en `specs/002-referencias-historial/resultado.md`.
+- [x] T1. Escribir `tests/test_state_references.py` cubriendo AC1, AC2, AC3, AC5 y AC6 con SQLite temporal y CSRF (estilo de `tests/test_state_validation.py`). — 14 pruebas creadas.
+- [x] T2. Escribir `tests/ui/references.spec.ts` cubriendo AC4 con eventos sintéticos y comprobación de red/persistencia. — 1 prueba creada, restaura fixture en afterEach.
+- [x] T3. Ejecutar ambas suites y registrar el fallo esperado (rojo): backend 8/14 FAIL (`200 != 400` en referencias; el guardado de reprod saltaba comprobación), UI FAIL (elimina la vaca y envía PUT 200 sin ningún alert).
 
 ## API (producción backend, no tocar pruebas)
 - [ ] T4. Implementar en `app.py` la validación de referencias de `reprod` y `partos` contra el payload con error 400 con colección, posición y campo.

@@ -57,6 +57,7 @@ test('AC4: bloquea eliminar animales con historial vinculado y mantiene el anima
     page.locator('div.fixed.inset-0').filter({ hasText: texto }).first()
 
   // 1) vaca con reproducción y parto
+  await page.getByRole('button', { name: 'Vacas', exact: true }).click()
   await page.getByRole('row').filter({ hasText: 'Florencia' }).getByTitle('Eliminar').click()
   await dialogo('¿Eliminar esta vaca?').getByRole('button', { name: 'Eliminar', exact: true }).click()
   await expect(page.getByRole('alert')).toBeVisible()

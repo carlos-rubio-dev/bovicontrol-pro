@@ -87,6 +87,8 @@ La revisión inicial detectó comodines demasiado amplios en los comandos permit
 
 En la segunda spec, una instrucción indicaba ejecutar Python con la ruta completa del venv, aunque los permisos solo admitían el comando de la suite. La herramienta rechazó ese intento. Se unificaron las instrucciones con el comando permitido y el venv en PATH. Los especialistas entregan sus resultados al coordinador, que es el único que puede escribir los informes de specs.
 
+El diseño inicial dejaba al coordinador sin edición. En la implementación puede escribir únicamente specs/** para mantener planes, tareas y resultados, sin tocar código ni pruebas. El revisor incorporó consultas exactas de git diff y git status --short para inspeccionar cambios pendientes, conservando la prohibición de editar y de ejecutar otros comandos. Se mantienen los cinco roles y el modelo del diseño original.
+
 ### Calidad
 
 1. CI ejecuta los scripts backend en procesos separados, compila la interfaz y comprueba el navegador. Los resultados aparecen en cada PR y en la pestaña Actions.
