@@ -59,6 +59,7 @@ def main():
                 self.assertTrue(error)
                 self.assertIn(f'{collection}, registro 1', error)
                 self.assertIn('"fechaNacimiento"', error)
+                self.assertIn('no puede ser posterior a la fecha actual', error)
                 self.assertEqual(self.client.get('/api/state').json['state'], copy.deepcopy(self.state))
 
             def test_future_birth_date_is_rejected_in_each_collection(self):

@@ -5,7 +5,7 @@ PUT /api/state valida el formato de las fechas pero permite fechaNacimiento futu
 
 ## Decisión de diseño
 - Validación de API antes de persistir: la comprobación vive en `validate_state_fields` (app.py), dentro del ciclo de campos de fecha, solo cuando el campo es `fechaNacimiento` (colecciones vacas, toros y crías). Así la regla aplica al añadir y al editar registros, porque PUT siempre revalida el estado completo (AC4).
-- Reutilizar `invalid_state_field` para que el error conserve el formato existente `"<colección>, registro <n>: el campo "fechaNacimiento" ..."` (AC1, AC2) y seguirá en inglés-español comprensible para el usuario.
+- Reutilizar `invalid_state_field` para que el error conserve el formato existente `"<colección>, registro <n>: el campo "fechaNacimiento" ..."` (AC1, AC2) en español comprensible para el usuario.
 - La comparación es `parsed > date.today()` usando la fecha del servidor; hoy y anteriores pasan (AC3). El formato ya está validado por el ciclo existente (AAAA-MM-DD estricto, incluyendo bisiesto vía `date.fromisoformat`).
 - No se toca ningún otro campo de fecha: `proximoParto`, `fechaDestete`, `fecha`, `fechaParto`, `ultimoParto` y `fechaReinicio` pueden seguir siendo futuros; no cambian intervalos ni reglas de monta (AC5).
 - El error se lanza antes de `db.session.commit()`; el handler ValueError ya hace rollback, por lo que un rechazo deja el estado persistido intacto (AC2).
