@@ -121,7 +121,7 @@ test('AC4: sin coincidencias muestra el mensaje específico de filtros', async (
 })
 
 test.describe('AC5: filtro y búsqueda por teclado y controles acomodados a 700 px', () => {
-  await page.setViewportSize({ width: 700, height: 800 })
+  test.use({ viewport: { width: 700, height: 800 } })
 
     test('teclado y distribución a 700 px', async ({ page }) => {
       await login(page)
