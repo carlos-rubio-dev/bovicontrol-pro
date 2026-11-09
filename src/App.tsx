@@ -1028,7 +1028,11 @@ function TorosScreen({ toros, crias, onAdd, onEdit, onDelete }: {
   const [modal, setModal] = useState<'new' | 'edit' | null>(null)
   const [editing, setEditing] = useState<Toro | undefined>()
   const [confirm, setConfirm] = useState<string | null>(null)
-  const filtered = toros.filter(t => t.nombre.toLowerCase().includes(search.toLowerCase()) || t.id.toLowerCase().includes(search.toLowerCase()))
+  const [estado, setEstado] = useState<Toro['estado'] | ''>('')
+  const consulta = search.trim().toLowerCase()
+  const filtered = toros.filter(t =>
+    (t.nombre.trim().toLowerCase().includes(consulta) || t.id.trim().toLowerCase().includes(consulta)) &&
+    (!estado || t.estado === estado))
 
   return (
     <div className="p-6 h-full overflow-y-auto">
@@ -1039,20 +1043,36 @@ function TorosScreen({ toros, crias, onAdd, onEdit, onDelete }: {
       )}
       {confirm && <ConfirmDialog msg="¿Eliminar este toro?" onConfirm={() => { onDelete(confirm); setConfirm(null) }} onCancel={() => setConfirm(null)} />}
 
-      <div className="flex items-center justify-between mb-5">
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6b7c5e]" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar toro..."
-            className="w-64 bg-white border border-[#d4ddd0] rounded-xl py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5a27]/30" />
+      <div className="flex flex-wrap gap-3 items-end justify-between mb-5">
+        <div className="w-full sm:w-60">
+          <label htmlFor="buscar-toro" className="block text-xs font-semibold text-[#6b7c5e] mb-1.5">Buscar toro</label>
+          <div className="relative">
+            <Search size={15} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6b7c5e]" />
+            <input id="buscar-toro" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar toro..."
+              className="w-full bg-white border border-[#d4ddd0] rounded-xl py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5a27]/30 focus:border-[#2d5a27]" />
+          </div>
         </div>
-        <button onClick={() => { setEditing(undefined); setModal('new') }}
-          className="flex items-center gap-2 px-4 py-2 bg-[#2d5a27] text-white rounded-xl text-sm font-medium hover:bg-[#3a7232] transition-colors">
+        <div className="w-full sm:w-44">
+          <label htmlFor="estado-toro" className="block text-xs font-semibold text-[#6b7c5e] mb-1.5">Estado del toro</label>
+          <select id="estado-toro" value={estado} onChange={e => setEstado(e.target.value as Toro['estado'] | '')}
+            className="w-full bg-white border border-[#d4ddd0] rounded-xl py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5a27]/30 focus:border-[#2d5a27]">
+            <option value="">Todos los estados</option>
+            {(['Activo', 'En cuarentena', 'Inactivo'] as const).map(estado => <option key={estado} value={estado}>{estado}</option>)}
+          </select>
+        </div>
+        <button type="button" onClick={() => { setSearch(''); setEstado('') }}
+          className="flex items-center gap-2 px-3 py-2 text-sm text-[#2d5a27] bg-white rounded-xl border border-[#d4ddd0] hover:bg-[#e8ede5] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2d5a27]">
+          <X size={14} aria-hidden="true" /> Limpiar filtros
+        </button>
+        <button type="button" onClick={() => { setEditing(undefined); setModal('new') }}
+          className="flex items-center gap-2 px-4 py-2 bg-[#2d5a27] text-white rounded-xl text-sm font-medium hover:bg-[#3a7232] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2d5a27] focus-visible:ring-offset-2">
           <Plus size={14} /> Nuevo toro
         </button>
       </div>
 
       <div className="bg-white rounded-xl border border-[#d4ddd0] shadow-sm overflow-hidden">
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[760px]">
           <thead>
             <tr className="border-b border-[#d4ddd0] bg-[#f4f6f3]">
               {['Código','Nombre','Raza','Edad','Peso','Crías','Estado','Observaciones','Acciones'].map(h => (
@@ -1079,11 +1099,18 @@ function TorosScreen({ toros, crias, onAdd, onEdit, onDelete }: {
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && <tr><td colSpan={9} className="text-center py-10 text-sm text-[#6b7c5e]">No se encontraron toros</td></tr>}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={9} className="text-center py-10 text-sm text-[#6b7c5e]">
+                  {toros.length ? 'Ningún toro coincide con los filtros aplicados' : 'No hay toros registrados'}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
+        </div>
         <div className="px-4 py-3 border-t border-[#d4ddd0]">
-          <span className="text-xs text-[#6b7c5e]">Mostrando {filtered.length} de {toros.length} registros</span>
+          <span role="status" aria-live="polite" className="text-xs text-[#6b7c5e]">Mostrando {filtered.length} de {toros.length} registros</span>
         </div>
       </div>
     </div>
