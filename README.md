@@ -36,3 +36,58 @@ Referencias para estos intervalos orientativos: [Oklahoma State University, dete
 El archivo `render.yaml` define el servicio web. La conexión a TiDB usa `mysql+pymysql://` y TLS; Render genera `SECRET_KEY`. `instance/`, `.env` y las bases locales están excluidas por `.gitignore`.
 
 La migración se revisa con `python migrate_to_cloud.py` y se aplica con `python migrate_to_cloud.py --apply`. El script solo escribe si la base remota está vacía, conserva los hashes de contraseña y comprueba las cantidades al finalizar. Mientras no haya usuarios migrados, la aplicación muestra una pantalla de preparación e impide crear otra cuenta administradora.
+
+
+## Desarrollo con OpenCode
+
+El arnés usa OpenCode 1.19.5 y un flujo SDD propio. Cada funcionalidad está en `specs/<id>/`: `spec.md` define los criterios, `plan.md` identifica los archivos y decisiones, `tasks.md` registra los pasos y `resultado.md` reúne pruebas, revisión y PR.
+
+### Piezas
+
+- `AGENTS.md` y `src/AGENTS.md`: arquitectura, comandos y reglas por área.
+- `opencode.json` y `docs/desarrollo.md`: permisos globales e instrucciones del flujo.
+- `.opencode/agents/`: coordinador, API, interfaz, verificador y revisor.
+- `.opencode/skills/`: cinco procedimientos del proyecto.
+- `.github/workflows/calidad.yml`: pruebas de API, build y pruebas de navegador en los PR.
+
+### Skills
+
+| Skill | Uso | Agente |
+|---|---|---|
+| `bovicontrol-api-tests` | Sesión, CSRF, SQLite temporal, datos separados y persistencia tras rechazos. | API y verificador |
+| `bovicontrol-react-ui` | Controles, filtros locales, teclado y pantallas pequeñas. | Interfaz y verificador |
+| `bovicontrol-sdd` | Spec, plan, tareas, delegaciones y evidencia de cada funcionalidad. | Coordinador |
+| `bovicontrol-csv` | Escape CSV, caracteres y prevención de fórmulas en exportaciones. | Interfaz, verificador y revisor |
+| `bovicontrol-revision` | Criterios frente a diff, pruebas y hallazgos. | Revisor |
+
+### Flujo
+
+```powershell
+opencode --version
+opencode run --agent coordinador "Trabaja la spec specs/<id>. Lee spec.md y sigue bovicontrol-sdd."
+```
+
+El coordinador prepara el plan y las tareas. El verificador escribe casos desde los criterios y registra el fallo esperado antes del código. API e interfaz modifican producción en sus rutas. El verificador ejecuta las comprobaciones y genera `static/dist`; el revisor inspecciona criterios, código y evidencia sin editarlos. Los hallazgos vuelven al rol responsable. El flujo se detiene después de dos rondas sin progreso y requiere decisión humana.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/check_backend.py
+npm.cmd run build
+npx.cmd playwright install chromium
+$env:BOVI_TEST_PYTHON = (Resolve-Path .\.venv\Scripts\python.exe).Path
+npm.cmd run test:ui
+```
+
+Las pruebas de navegador usan `tests/serve_ui.py`, que crea una base temporal con datos sintéticos. El servidor termina al finalizar la ejecución. `test-results/` queda fuera de Git; CI publica el resultado como artefacto.
+
+### Ajustes del diseño de agentes
+
+OpenCode 1.19.5 usa `permission` con las claves `bash` y `task`, en lugar de la sintaxis `permissions/action/resource/effect` considerada en el diseño. La carga de los perfiles se comprobó con la propia herramienta. El verificador usa Playwright mediante shell para revisar el navegador y ejecutar build; API e interfaz no necesitan shell. La configuración, dependencias y permisos del arnés se mantienen fuera del alcance de los especialistas.
+
+La revisión inicial detectó comodines demasiado amplios en los comandos permitidos. Se sustituyeron por comandos exactos y se retiraron entradas para scripts inexistentes. La primera ejecución de navegador pasó, pero el sandbox de Windows impedía cerrar los procesos; la ejecución con permisos de proceso completos terminó con código 0. En CI se usa Chromium de Playwright sobre Linux.
+
+### Calidad
+
+1. CI ejecuta los scripts backend en procesos separados, compila la interfaz y comprueba el navegador. Los resultados aparecen en cada PR y en la pestaña Actions.
+2. El revisor de OpenCode contrasta cada criterio con el diff y los resultados del verificador. Los hallazgos y correcciones se registran en `resultado.md` de cada spec.
+
+La evidencia por funcionalidad está enlazada en la sección de specs. SQLite temporal no demuestra rendimiento ni compatibilidad de MySQL/TiDB. La protección de `main` depende de la configuración del repositorio; un workflow por sí solo no impide un push directo.

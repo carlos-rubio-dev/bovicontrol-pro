@@ -18,9 +18,11 @@ npm.cmd run build
 ```
 La aplicación está en `http://127.0.0.1:5000`. Para desarrollar la interfaz, ejecuta `npm.cmd run dev` en otra terminal; Vite redirige `/api` al servidor Flask. `npm.cmd run build` genera `static/dist`, que Flask sirve y que este repositorio versiona; incluye el resultado si cambia la interfaz.
 
-Prueba de regresión existente:
+Comprobaciones del proyecto:
 ```powershell
-.\.venv\Scripts\python.exe tests/test_reproduction.py
+.\.venv\Scripts\python.exe scripts/check_backend.py
+npm.cmd run build
+npm.cmd run test:ui
 ```
 Ejecuta cada archivo de pruebas como script separado: el actual importa la aplicación y ejecuta unittest al cargarse. Los nuevos tests deben usar SQLite temporal y establecer `DATABASE_URL` y `SECRET_KEY` antes de importar `app`; nunca usar la base de la finca.
 
@@ -34,4 +36,4 @@ Ejecuta cada archivo de pruebas como script separado: el actual importa la aplic
 ## Convenciones de desarrollo
 Usa `snake_case` en Python y `camelCase`/`PascalCase` en TypeScript. Conserva el estilo del archivo modificado. Documenta la validación en cada PR. Las ramas parten de `main` y los commits describen el cambio. Los cambios funcionales se planifican antes de implementar.
 
-Las skills específicas están en `.opencode/skills/`: `bovicontrol-api-tests` para API/aislamiento y `bovicontrol-react-ui` para cambios de interfaz. El contexto adicional de frontend está en `src/AGENTS.md`.
+Los cinco perfiles están en `.opencode/agents/` y las cinco skills en `.opencode/skills/`. El coordinador sigue bovicontrol-sdd; cada funcionalidad registra criterios, plan, tareas y resultado en specs/. El contexto adicional de frontend está en src/AGENTS.md. La configuración usa la sintaxis permission de OpenCode 1.19.5.
