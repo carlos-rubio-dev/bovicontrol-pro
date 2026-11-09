@@ -24,7 +24,7 @@ Comprobaciones del proyecto:
 npm.cmd run build
 npm.cmd run test:ui
 ```
-Ejecuta cada archivo de pruebas como script separado: el actual importa la aplicación y ejecuta unittest al cargarse. Los nuevos tests deben usar SQLite temporal y establecer `DATABASE_URL` y `SECRET_KEY` antes de importar `app`; nunca usar la base de la finca.
+scripts/check_backend.py ejecuta cada archivo de pruebas en un proceso separado: los scripts importan la aplicación y configuran su base antes de hacerlo. Los nuevos tests deben usar SQLite temporal y establecer DATABASE_URL y SECRET_KEY antes de importar app; nunca usar la base de la finca. En el entorno de los agentes, el venv está en PATH y el comando permitido es python scripts/check_backend.py.
 
 ## Reglas que deben preservarse
 - El administrador gestiona cuentas, pero no puede leer el ganado de otros usuarios. Resuelve siempre el propietario desde la sesión; no aceptes un `user_id` del cliente para escoger datos.

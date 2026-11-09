@@ -85,6 +85,8 @@ OpenCode 1.19.5 usa `permission` con las claves `bash` y `task`, en lugar de la 
 
 La revisión inicial detectó comodines demasiado amplios en los comandos permitidos. Se sustituyeron por comandos exactos y se retiraron entradas para scripts inexistentes. La primera ejecución de navegador pasó, pero el sandbox de Windows impedía cerrar los procesos; la ejecución con permisos de proceso completos terminó con código 0. En CI se usa Chromium de Playwright sobre Linux.
 
+En la segunda spec, una instrucción indicaba ejecutar Python con la ruta completa del venv, aunque los permisos solo admitían el comando de la suite. La herramienta rechazó ese intento. Se unificaron las instrucciones con el comando permitido y el venv en PATH. Los especialistas entregan sus resultados al coordinador, que es el único que puede escribir los informes de specs.
+
 ### Calidad
 
 1. CI ejecuta los scripts backend en procesos separados, compila la interfaz y comprueba el navegador. Los resultados aparecen en cada PR y en la pestaña Actions.

@@ -18,5 +18,5 @@ Carga las skills de API o UI que correspondan. Usa SQLite temporal y usuarios si
 Antes de implementar registra qué caso falla y por qué; después ejecuta backend, build y los tests UI relevantes.
 Usa tests/ui/helpers.ts para iniciar sesión y tests/serve_ui.py para una base aislada.
 Los fixtures compartidos no son datos reales. Comprueba estado HTTP, efectos y persistencia.
-Para ejecutar scripts Python en Windows usa ./.venv/Scripts/python.exe; para npm usa npm.cmd.
+El entorno inicia con el venv en PATH. Ejecuta exactamente python scripts/check_backend.py, npm.cmd run build y npm.cmd run test:ui. No uses rutas absolutas ni ejecutes archivos de prueba individuales: esos comandos no están permitidos.
 No guardes logs de sesiones, secretos, bases o capturas de datos reales en el repositorio.
