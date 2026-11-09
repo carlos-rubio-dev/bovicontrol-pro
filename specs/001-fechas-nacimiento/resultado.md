@@ -27,7 +27,7 @@ Validación comprobada con SQLite temporal. No cambia los intervalos reproductiv
 
 ## Ejecución de OpenCode
 
-OpenCode 1.19.5 · opencode/glm-5.3-flash-free. Las sesiones originales permanecen en el almacenamiento local de la herramienta.
+OpenCode 1.19.5 · opencode/glm-5.3-flash-free.
 
 | Rol | Sesión | Skills cargadas |
 |---|---|---|
@@ -38,20 +38,15 @@ OpenCode 1.19.5 · opencode/glm-5.3-flash-free. Las sesiones originales permanec
 | revisor | `ses_e3df368d6ffeht5RFKEyUoOVVp` | bovicontrol-revision |
 | verificador | `ses_e3df1fb13ffe971F36b2OQy0F2` | bovicontrol-api-tests |
 
-Comandos observados:
+Comprobaciones ejecutadas:
 
-| Rol | Comando | Resultado |
+| Comando | Resultado | Ejecuciones |
 |---|---|---|
-| coordinador | `git status; git log --oneline -5; git branch --show-current` | error |
-| coordinador | `git status --short` | exit 0 |
-| coordinador | `git diff --stat` | exit 0 |
-| coordinador | `git diff --stat` | exit 0 |
-| coordinador | `git diff` | exit 0 |
-| coordinador | `git status --short` | exit 0 |
-| coordinador | `git diff --stat` | exit 0 |
-| verificador | `python -c "import sys; import flask; print(sys.executable)"` | error |
-| verificador | `python scripts/check_backend.py` | exit 1 |
-| verificador | `python scripts/check_backend.py` | exit 0 |
-| verificador | `python scripts/check_backend.py; echo "EXIT=$LASTEXITCODE"` | error |
-| verificador | `python scripts/check_backend.py` | exit 0 |
-| verificador | `python scripts/check_backend.py` | exit 0 |
+| `python scripts/check_backend.py` | exit 1 | 1 |
+| `python scripts/check_backend.py` | exit 0 | 3 |
+
+La herramienta rechazó 3 intentos de comandos fuera de los permisos. No se ampliaron permisos para ejecutarlos.
+
+## Integración
+
+[Rama y PR #13](https://github.com/carlos-rubio-dev/bovicontrol-pro/pull/13) · [Comprobaciones de CI](https://github.com/carlos-rubio-dev/bovicontrol-pro/actions/runs/42696291797). Fusionado en main con 8745e68.

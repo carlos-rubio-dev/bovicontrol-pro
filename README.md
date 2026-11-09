@@ -95,3 +95,23 @@ El diseño inicial dejaba al coordinador sin edición. En la implementación pue
 2. El revisor de OpenCode contrasta cada criterio con el diff y los resultados del verificador. Los hallazgos y correcciones se registran en `resultado.md` de cada spec.
 
 La evidencia por funcionalidad está enlazada en la sección de specs. SQLite temporal no demuestra rendimiento ni compatibilidad de MySQL/TiDB. La protección de `main` depende de la configuración del repositorio; un workflow por sí solo no impide un push directo.
+
+En CSV se comprueban la serialización y la descarga. No se probó el ciclo de abrir, guardar y volver a abrir en Excel. Las aplicaciones pueden interpretar los valores de forma distinta ([OWASP, CSV Injection](https://community.owasp.org/attacks/CSV_Injection)).
+
+## Specs del proyecto integrador
+
+El flujo SDD usa la estructura propia descrita arriba. No utiliza Spec Kit. Las cinco funcionalidades se desarrollaron en ramas separadas y sus PR se fusionaron en main después de comprobar CI.
+
+| Funcionalidad | Spec y resultado | Pull request | CI |
+|---|---|---|---|
+| Fechas de nacimiento | [Spec](specs/001-fechas-nacimiento/spec.md) · [Plan](specs/001-fechas-nacimiento/plan.md) · [Tareas](specs/001-fechas-nacimiento/tasks.md) · [Resultado](specs/001-fechas-nacimiento/resultado.md) | [#13](https://github.com/carlos-rubio-dev/bovicontrol-pro/pull/13) | [Ejecución](https://github.com/carlos-rubio-dev/bovicontrol-pro/actions/runs/42696291797) |
+| Relaciones del historial | [Spec](specs/002-referencias-historial/spec.md) · [Plan](specs/002-referencias-historial/plan.md) · [Tareas](specs/002-referencias-historial/tasks.md) · [Resultado](specs/002-referencias-historial/resultado.md) | [#14](https://github.com/carlos-rubio-dev/bovicontrol-pro/pull/14) | [Ejecución](https://github.com/carlos-rubio-dev/bovicontrol-pro/actions/runs/42700463402) |
+| Filtro de toros | [Spec](specs/003-filtro-toros/spec.md) · [Plan](specs/003-filtro-toros/plan.md) · [Tareas](specs/003-filtro-toros/tasks.md) · [Resultado](specs/003-filtro-toros/resultado.md) | [#15](https://github.com/carlos-rubio-dev/bovicontrol-pro/pull/15) | [Ejecución](https://github.com/carlos-rubio-dev/bovicontrol-pro/actions/runs/42703532071) |
+| Filtros de crías | [Spec](specs/004-filtros-crias/spec.md) · [Plan](specs/004-filtros-crias/plan.md) · [Tareas](specs/004-filtros-crias/tasks.md) · [Resultado](specs/004-filtros-crias/resultado.md) | [#16](https://github.com/carlos-rubio-dev/bovicontrol-pro/pull/16) | [Ejecución](https://github.com/carlos-rubio-dev/bovicontrol-pro/actions/runs/42705948664) |
+| Exportación CSV de vacas | [Spec](specs/005-exportacion-vacas/spec.md) · [Plan](specs/005-exportacion-vacas/plan.md) · [Tareas](specs/005-exportacion-vacas/tasks.md) · [Resultado](specs/005-exportacion-vacas/resultado.md) | [#17](https://github.com/carlos-rubio-dev/bovicontrol-pro/pull/17) | [Ejecución](https://github.com/carlos-rubio-dev/bovicontrol-pro/actions/runs/42710002049) |
+
+## Exposición y reflexiones
+
+[Presentación](docs/integrador/Presentacion.pptx) · [Reflexiones del grupo](docs/integrador/Reflexiones.pdf).
+
+La presentación incluye el guion en las notas y enlaces a las specs, los PR y sus resultados.
