@@ -1,7 +1,7 @@
 import { useState, useId, useEffect, useRef } from 'react'
 import {
   Home, Beef, Milk, Baby, Heart, ChevronRight, ChevronLeft,
-  Plus, Edit2, Trash2, Eye, Clock,
+  Plus, Edit2, Trash2, Eye, Clock, Download,
   Wifi, WifiOff, RefreshCw, Search, X, Check,
   TrendingUp, Activity, LogOut, Lock, Mail,
   ArrowLeft, AlertTriangle, Calendar, Bell,
@@ -10,6 +10,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from 'recharts'
+import { serializeCsv } from './csv'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Screen = 'login' | 'dashboard' | 'vacas' | 'vacaProfile' | 'toros' | 'crias' | 'reproduccion' | 'partos' | 'destetes' | 'calendario' | 'notificaciones' | 'usuarios'
@@ -847,8 +848,26 @@ function VacasScreen({ vacas, toros, onAdd, onEdit, onDelete, onProfile }: {
           className="flex items-center gap-2 px-3 py-2 text-sm text-[#2d5a27] rounded-xl border border-[#d4ddd0] hover:bg-[#e8ede5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2d5a27]">
           <X size={14} aria-hidden="true" /> Limpiar filtros
         </button>}
+        <button type="button" onClick={() => {
+          const filas: readonly (readonly unknown[])[] = [
+            ['Código', 'Nombre', 'Raza', 'Nacimiento', 'Peso (kg)', 'Estado', 'Último parto', 'Próximo parto', 'Partos'],
+            ...filtered.map(v => [v.id, v.nombre, v.raza, v.fechaNacimiento, v.peso, v.estado, v.ultimoParto, v.proximoParto, v.partos]),
+          ]
+          const blob = new Blob([serializeCsv(filas)], { type: 'text/csv;charset=utf-8' })
+          const url = URL.createObjectURL(blob)
+          const enlace = document.createElement('a')
+          enlace.href = url
+          enlace.download = 'vacas.csv'
+          document.body.appendChild(enlace)
+          enlace.click()
+          enlace.remove()
+          setTimeout(() => URL.revokeObjectURL(url), 0)
+        }} disabled={filtered.length === 0}
+          className="sm:ml-auto flex items-center gap-2 px-4 py-2 text-sm text-[#2d5a27] rounded-xl border border-[#d4ddd0] hover:bg-[#e8ede5] transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2d5a27] focus-visible:ring-offset-2">
+          <Download size={14} aria-hidden="true" /> Exportar CSV
+        </button>
         <button type="button" onClick={() => { setEditing(undefined); setModal('new') }}
-          className="sm:ml-auto flex items-center gap-2 px-4 py-2 bg-[#2d5a27] text-white rounded-xl text-sm font-medium hover:bg-[#3a7232] transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2d5a27] focus-visible:ring-offset-2">
+          className="flex items-center gap-2 px-4 py-2 bg-[#2d5a27] text-white rounded-xl text-sm font-medium hover:bg-[#3a7232] transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2d5a27] focus-visible:ring-offset-2">
           <Plus size={14} /> Nueva vaca
         </button>
       </div>
